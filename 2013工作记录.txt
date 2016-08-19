@@ -1,0 +1,1471 @@
+2013-07-02
+
+1、在vmware 上进行安装VTP0702.iso镜像文件，熟悉整个系统的安装过程。
+2、熟悉了xshell、goodsync工具的使用.
+3、对服务器上的环境编译进行了熟悉工作，并且会使用。
+4、学会使用了sftp传输文件的命令与工具的使用。
+
+2013-07-03
+一、修改/src/1.2.00/src/app/vtp-reportdata中的bug问题
+文件中src/packet.c中
+1、26行g_hash_table_foreach(data->items,(GHRFunc)print_items, str);更改为g_hash_table_foreach(data->items,(GHFunc)print_items, str)；
+2、39行g_hash_table_foreach(node_hash, (GHRFunc)print_req_of_obj_type, str);改为
+g_hash_table_foreach(node_hash, (GHFunc)print_req_of_obj_type, str);
+3、修改reqother.c 196行*resp_header = pack_response(key_prefix, (const char**)items, msg_id, prio);添加了(const char**)；
+4、修改server.c 381行 g_return_val_if_fail(thread != NULL && *thread == NULL, -1);为g_return_val_if_fail(thread != NULL && *thread == 0, -1);
+5、修改server.c 487行 if (!g_option_context_parse (context, &argc, &argv, &err))为if (!g_option_context_parse (context, argc, &argv, &err));
+6、修改server.c 530行 int32_t fp = NULL;为int32_t fp = 0;
+
+
+2013-10-16
+更换文件的快速方法：
+在/boot/firmware/current目录中：
+mkdir custom;
+mkdir 01-custom-1.2.00;
+在01-custom-1.2.00目录中放入你需要替换的文件（需要有全部的路径)
+
+apache2 不打印access信息的方法：
+将http.conf 中的CustomLog ${APACHE_LOG_DIR}/access.log common 注释掉。
+在项目中：在文件夹/etc/apache2/sites-available中：修改vtp.conf 文件，把CustomLog ${APACHE_LOG_DIR}/access.log commbin 注释掉。
+在/etc/apache2/conf.d 中，修改other-vhosts-access-log文件中的CustomLog ${APACHE_LOG_DIR}/other_vhosts_access.log vhost_combined注释掉。
+
+在项目中相对的文件：
+				E:\VTP1.2\Alternate\build\pkg\replace-root\etc\apache2\conf.d\other-vhosts-access-log
+				E:\VTP1.2\Alternate\src\app\vtp-manager\www\templates\vtp.conf
+
+2013-10-17
+修改版本号：
+1、修改version-from文件：在此文件中添加版本号
+2、修改build.sh
+VERSION=1.2.01
+VERSION=${VERSION}_B
+3、修改auto_update_devices.sh文件
+VERSION=1.2.01_B
+4、修改build_custom.sh中VERSION="custom-1.2.02_B"
+
+2013-10-21
+获取开连接中的端口号：
+netstat -ntul | sed '1,2d' | awk '{print $4}' | awk -F ":" '{print $NF}' | sort -n | uniq
+
+2013-10-22
+序列号过期的解决办法：
+touch /cfs/sn_trigger
+
+更改信号的处理方法，并且在还原回去默认的方法的函数：
+enum qb_sigpipe_ctl {
+       QB_SIGPIPE_IGNORE,
+       QB_SIGPIPE_DEFAULT,
+};
+void
+qb_sigpipe_ctl(enum qb_sigpipe_ctl ctl)
+{
+	struct sigaction act;
+	struct sigaction oact;
+
+	act.sa_handler = SIG_IGN;
+
+	if (ctl == QB_SIGPIPE_IGNORE) {
+		sigaction(SIGPIPE, &act, &oact);
+	} else {
+		sigaction(SIGPIPE, &oact, NULL);
+	}
+}
+
+2013-10-23
+系统中同一个进程只存在一个的方法：
+里面涉及了给文件加锁的方法.
+//单实例控制
+static int single_process(const char* ProcName)
+{
+    if (ProcName == NULL)
+    {
+        return PROCESS_NAME_ERROR;
+    }
+    char file_lock_name[512] = "/var/lock/single.";
+
+    if (strlen(ProcName) >=  (sizeof(file_lock_name) - strlen(file_lock_name)))
+    {
+        /*传入参数名字太长*/
+        return PROCESS_NAME_ERROR;
+    }
+
+    strcat(file_lock_name,ProcName);
+
+    int	file =  open(file_lock_name, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    if (-1 == file )
+    {
+        /*创建文件失败*/
+        return CREATE_LOCKFILE_FAILURE;
+    }
+    int	flag =  fcntl(file, F_GETFD);
+    flag |= FD_CLOEXEC;
+    fcntl(file, F_SETFD, flag);
+    struct flock file_lock;
+    file_lock.l_type	= F_WRLCK;
+    file_lock.l_start	= 0;
+    file_lock.l_whence	= SEEK_SET;
+    file_lock.l_len		= 0;
+    if ( -1 == fcntl(file, F_SETLK, &file_lock))
+    {
+        if (errno == EACCES || errno == EAGAIN)
+        {
+            /*该程序已经有一个进程实例在运行*/
+            return PROCESS_BEEN_RUNUING;
+        }
+        else
+        {
+            return PROCESS_SINGLE_SUCESS;
+        }
+    }
+
+    return PROCESS_SINGLE_SUCESS;
+
+}
+
+2013-10-24
+linux 添加默认路由：
+route add default gw 200.200.103.254
+route add -net 200.200.0.0 gw 200.200.103.254
+
+如果想添加如下这样的信息：
+192.168.137.0   *               255.255.255.0   U     0      0        0 eth0
+命令为：
+route add -net 192.168.137.0 netmask 255.255.255.0 dev eth0；如果在添加的过程报SIOCADDRT: No such device这样的错误，可能eth0没有
+起来，所以可以用ifup eth0 或者ifconfig eth0 up试试。
+
+2013-11-07
+创建虚拟机命令：
+vtpsh create /nodes/host-000c294cd0e5/qemu -name test1  -ostype wxp  -sockets 1 -memory 64 -ide0 none,media=cdrom -cfgstorage local  -ide1 local:1,format=qcow2,cache=directsync,preallocate=metadata -cpu core2duo -cores 1 -net0 rtl8139,bridge=br_eth0,connect=on -scsihw lsi
+
+
+2013-11-09
+安装7z：
+apt-get install p7zip-full
+7z 压缩：
+7z a -p${PASSWD} -mhe=on ${VMLINUX_NAME}.7z $VMLINUX_NAME
+7z 解压：
+7z e -p${PASSWD} -mhe=on ${VMLINUX_NAME}.7z 
+
+安装gcc-4.7的过程：
+debian 下载软件的包的地址：packages.debian.org/wheezy/gcc-4.7
+安装顺序：dpkg -i binutils_2.22-8_amd64.deb
+libgmp10_5.0.5+dfsg-2_amd64.deb
+libgomp1_4.7.2-5_amd64.deb
+libitm1_4.7.2-5_amd64.deb
+libmpfr4_3.1.0-5_amd64.deb
+libmpc2_0.9-4_amd64.deb
+libquadmath0_4.7.2-5_amd64.deb
+gcc-4.7-base_4.7.2-5_amd64.deb
+cpp-4.7_4.7.2-5_amd64.deb
+gcc-4.7_4.7.2-5_amd64.deb
+
+安装openssh-server:
+
+
+2013-11-11
+scp/ssh 去掉交互式yes/no的方法：加上-o StrictHostKeyChecking no
+
+scp -o "StrictHostKeyChecking no" 1.txt root@200.200.103.1:/sf
+
+
+2013-11-12
+编译的时候出现这个错误的原因：
+make  install-exec-hook
+make[2]: Entering directory `/src/1.2.00/src/app/vtp-cluster/vtp-cfgfuse/VTP'
+ cd .. && /bin/bash ./config.status VTP/Makefile depfiles
+yjh: skip re configure
+perl -I.. ./vtpcm verifyapi
+[[512]] 无法获取节点compilerVT4 的IP--节点掉线make[2]: *** [install-exec-hook] Error 255
+
+
+修改/etc/hosts里面的ip 并且修改成compilerVT4
+
+修改显示颜色：
+在 .bashrc中修改：
+PS1='${debian_chroot:+($debian_chroot)}\[\033[00;32m\][\[\033[01;33m\]\u\[\033[00;32m\]@\[\033[01;31m\]\h \[\033[01;34m\]\w\[\033[00;32m\]]\[\033[00;37m\]\$'
+
+2013-11-13
+shell 脚本中注意颜色的显示问题：
+CNONE='\033[00m' #\033[01;00m
+CRED='\033[01;31m'
+CGREEN='\033[01;32m'
+CYELLOW='\033[01;33m'
+CBLUE='\033[01;34m'
+CPURPLE='\033[01;35m'
+CCYAN='\033[01;36m'
+CWHITE='\033[01;37m'
+C0=$CNONE
+以上的颜色显示在以#！/bin/sh与#！/bin/bash中有所不同：
+在#!/bin/sh中：echo "${CPURPLE}。。。${C0}"就能显示颜色。而
+在#!/bin/bash中：必须是echo -e "${CPURPLE}。。。${C0}"才能显示颜色。
+
+xz格式的压缩文件 解压与压缩的方法：
+linux内核一般都是xz压缩的
+
+xz用tar可以这样：tar Jcvf xxx.tar.xz xxx
+对于tar未提供的压缩工具（假设这里是xz），可以使用 --use-compress-program=xz 或-I xz或--use=xz参数
+如 tar -I xz -cvvf xxx.tar.xz xxx
+tar --use=xz -cvvf xxx.tar.xz xxx
+
+xz压缩文件方法或命令
+xz -z 要压缩的文件
+如果要保留被压缩的文件加上参数 -k ，如果要设置压缩率加入参数 -0 到 -9调节压缩率。如果不设置，默认压缩等级是6.
+xz解压文件方法或命令
+xz -d 要解压的文件
+同样使用 -k 参数来保留被解压缩的文件。
+
+
+创建虚拟机发送的参数：
+name:test2
+ostype:wxp
+sockets:1
+memory:512
+cfgstorage:local
+ide1:local:1,format=qcow2,cache=directsync,preallocate=full
+cpu:core2duo
+cores:1
+net0:e1000,bridge=br_eth0,connect=on
+
+内存过载中需要的技术：
+（1）内存交换（swapping）：用交换空间（swap space）来弥补内存的不足。
+
+（2）气球（ballooning）：通过virio_balloon驱动来实现宿主机Hypervisor和客户机之间的协作来完成。
+
+（3）页共享（page sharing）：通过KSM（Kernel Samepage Merging）合并多个客户机进程使用的相同内存页。
+
+
+关于CPU的过载使用，最推荐的做法是对多个单CPU的客户机使用over-commit，比如：在拥有4个逻辑CPU的宿主机中，同时运行多于4个（如8个、16个）客户机，其中每个客户机都被分配一个vCPU。这时，如果每个宿主机的负载不很大的情况下，宿主机Linux对每个客户机的调度是非常有效的，这样的过载使用并不会带来客户机中的性能损失。
+
+关于CPU的过载使用，最不推荐的做法是让某一个客户机的vCPU数量超过物理系统上存在CPU数量。比如，在拥有4个逻辑CPU的宿主机中，同时运行一个或多个客户机，其中每个客户机的vCPU数量多于4个（如16个）。这样的使用方法会带来比较明显的性能下降，其性能反而不如将客户机分配2个（或4个）vCPU，而且如果客户机中负载过重时，可能会让整个系统运行不稳定。不过，在并非100%满负载的情况下，一个（或多个）有4个vCPU的客户机运行在拥有4个逻辑CPU的宿主机中并不会带来明显的性能损失。
+
+
+2013-11-14
+创建镜像文件：
+qemu-img create -f qcow2 turbo-10.5.5-rc2.img 20G
+启动虚拟机的命令：
+
+/sf/qemu-kvm/x86_64-softmmu/qemu-system-x86_64 -id 7155267512638 -chardev socket,id=qmp,path=/var/run/qemu-server/7155267512638.qmp,server,nowait -mon chardev=qmp,mode=control -vnc unix:/var/run/qemu-server/7155267512638.vnc,x509,password -pidfile /var/run/qemu-server/7155267512638.pid -name test -smp sockets=1,cores=1 -cpu core2duo -nodefaults -vga cirrus -no-hpet -k en-us -boot menu=on,splash-time=4000 -m 512 -usb -drive if=none,id=drive-ide0,media=cdrom,aio=native -device ide-cd,bus=ide.0,unit=0,drive=drive-ide0,id=ide0,bootindex=200 -drive file=/sf/data/local/images/host-000c292fb04d/test.vm/vm-disk-1.qcow2,if=none,id=drive-ide2,cache=directsync,aio=native -device ide-hd,bus=ide.1,unit=0,drive=drive-ide2,id=ide2,bootindex=100 -netdev type=tap,id=net0,ifname=715526751263800,script=/sf/etc/kvm/vtp-bridge -device rtl8139,mac=FE:FC:FE:8D:C4:A5,netdev=net0,bus=pci.0,addr=0x12,id=net0,bootindex=300 -rtc driftfix=slew,clock=rt,base=localtime -global kvm-pit.lost_tick_policy=discard -global PIIX4_PM.disable_s3=1 -global PIIX4_PM.disable_s4=1 -post test
+
+
+有serial 串口的
+-id 7155267512638 -chardev socket,id=qmp,path=/var/run/qemu-server/7155267512638.qmp,server,nowait -mon chardev=qmp,mode=control -vnc unix:/var/run/qemu-server/7155267512638.vnc,x509,password -pidfile /var/run/qemu-server/7155267512638.pid -serial unix:/var/run/serial_7155267512638_0.sock,server,nowait -name test -smp sockets=1,cores=1 -cpu core2duo -nodefaults -vga cirrus -no-hpet -k en-us -boot menu=on,splash-time=4000 -m 512 -usb -drive if=none,id=drive-ide0,media=cdrom,aio=native -device ide-cd,bus=ide.0,unit=0,drive=drive-ide0,id=ide0,bootindex=200 -drive file=/sf/data/local/images/host-000c292fb04d/test.vm/vm-disk-1.qcow2,if=none,id=drive-ide2,cache=directsync,aio=native -device ide-hd,bus=ide.1,unit=0,drive=drive-ide2,id=ide2,bootindex=100 -netdev type=tap,id=net0,ifname=715526751263800,script=/sf/etc/kvm/vtp-bridge -device rtl8139,mac=FE:FC:FE:8D:C4:A5,netdev=net0,bus=pci.0,addr=0x12,id=net0,bootindex=300 -rtc driftfix=slew,clock=rt,base=localtime -global kvm-pit.lost_tick_policy=discard -global PIIX4_PM.disable_s3=1 -global PIIX4_PM.disable_s4=1 -post test
+
+
+debian版本号：
+Linux debian 3.2.0-4-amd64 #1 SMP Debian 3.2.41-2 x86_64 GNU/Linux
+在安装g++4.7的时候出现了这种错误：
+[root@debian /home/laoyi]#dpkg -i g++-4.7_4.7.2-5_amd64.deb  
+
+(Reading database ... 24185 files and directories currently installed.)
+Preparing to replace g++-4.7 4.7.2-5 (using g++-4.7_4.7.2-5_amd64.deb) ...
+Unpacking replacement g++-4.7 ...
+dpkg: dependency problems prevent configuration of g++-4.7:
+ g++-4.7 depends on libstdc++6-4.7-dev (= 4.7.2-5); however:
+  Package libstdc++6-4.7-dev is not configured yet.
+
+dpkg: error processing g++-4.7 (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ g++-4.7
+ 由此可见，需要的依赖库为libstdc++6-4.7-dev；然后下载libstdc++6-4.7-dev_4.7.2-5_amd64.deb
+ 执行
+ [root@debian /home/laoyi]#dpkg -i libstdc++6-4.7-dev_4.7.2-5_amd64.deb 
+(Reading database ... 24185 files and directories currently installed.)
+Preparing to replace libstdc++6-4.7-dev 4.7.2-5 (using libstdc++6-4.7-dev_4.7.2-5_amd64.deb) ...
+Unpacking replacement libstdc++6-4.7-dev ...
+dpkg: dependency problems prevent configuration of libstdc++6-4.7-dev:
+ libstdc++6-4.7-dev depends on g++-4.7 (= 4.7.2-5); however:
+  Package g++-4.7 is not configured yet.
+
+dpkg: error processing libstdc++6-4.7-dev (--install):
+ dependency problems - leaving unconfigured
+Errors were encountered while processing:
+ libstdc++6-4.7-dev
+ 又报错，怪异了。
+ 经查询的解决办法为：同时安装两个deb，就可以安装上了。
+ [root@debian /home/laoyi]#dpkg -i g++-4.7_4.7.2-5_amd64.deb  libstdc++6-4.7-dev_4.7.2-5_amd64.deb 
+(Reading database ... 24185 files and directories currently installed.)
+Preparing to replace g++-4.7 4.7.2-5 (using g++-4.7_4.7.2-5_amd64.deb) ...
+Unpacking replacement g++-4.7 ...
+Preparing to replace libstdc++6-4.7-dev 4.7.2-5 (using libstdc++6-4.7-dev_4.7.2-5_amd64.deb) ...
+Unpacking replacement libstdc++6-4.7-dev ...
+Setting up libstdc++6-4.7-dev (4.7.2-5) ...
+Setting up g++-4.7 (4.7.2-5) ...
+
+2013-11-15
+apache2 限制某个目录被访问的方法：
+<Directory /sf/share/vtp-api-doc>
+	AllowOverride None
+	Order deny,allow
+    deny from all
+</Directory>
+允许某个目录被访问：
+<Directory /sf/share/vtp-api-doc>
+	AllowOverride None
+	Order allow,deny
+    allow from all
+</Directory>
+
+2013-11-18
+gzip: unknown suffix -- ignored
+gunzip file#识别后缀，必须把后缀改为.gz //解压后的文件名，去掉.gz
+gunzip -c > urfile.txt
+
+解压initrd-img的办法：
+cp ../initrd.img-3.12.0 initrd.gz 先添加上gz后缀
+然后
+zcat initrd.gz | cpio -imd
+
+压缩initrd-img的办法：
+#假设当前目录位于准备好的initrd文件系统的根目录下
+bash# find . | cpio -c -o > ../initrd.img
+bash# gzip ../initrd.img
+
+添加网桥：
+1、创建网桥设备：brctl addbr <bridge> ，eg：brctl addbr  br0
+2、把物理网卡设置为混杂模式。ifconfig eth0 0.0.0.0 promisc;
+3、向网桥设备添加物理网卡：brctl addif <bridge> <device>，eg：brctl  addif  br0 eth0/eth1（根据需要添加几个网卡）
+4、重新设置ip：ifconfig br0 up;ifconfig br0 200.200.103.1 netmask 255.255.252.0
+
+其他关于网桥的命令：
+从网桥中删除网卡：brctl delif <bridge> <device>，eg：brctl  delif  br0 eth0/eth1 
+删除网桥：brctl delbr <bridge>，eg：brctl delbr br0
+查看网桥配置情况：brctl show
+
+2013-11-19
+通过fcntl设置FD_CLOEXEC标志有什么用？
+close on exec, not on-fork, 意为如果对描述符设置了FD_CLOEXEC，使用execl执行的程序里，此描述符被关闭，不能再使用它，但是在使用fork调用的子进程中，此描述符并不关闭，仍可使用。
+FD_CLOEXEC用来设置文件的close-on-exec状态标准。在exec()调用后，close-on-exec标志为0的情况，此文件不被关闭。非零则在exec()后被关闭。默认close-on-exec状态为0，需要通过FD_CLOEXEC设置。
+---------------------------------------------------------------------------------------------------------------
+int flags;
+int dummy = 0;
+if ((flags = fcntl(fd, F_GETFL, dummy)) < 0){
+    debug(50, 0) ("FD %d: fcntlF_GETFL: %s\n", fd, xstrerror());
+    return;
+}
+if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) <0)
+   debug(50, 0) ("FD %d: setclose-on-exec failed: %s\n", fd, xstrerror());
+   
+ C/C++中##(两个井号)和#(一个井号)用法说明：
+ 在C语言的宏中，#的功能是将其后面的宏参数进行字符串化操作（Stringfication），简单说就是在对它所引用的宏变量通过替换后在其左右各加上一个双引号。
+ 
+ 而##被称为连接符（concatenator），用来将两个Token连接为一个Token。注意这里连接的对象是Token就行，而不一定是宏的变量。
+ 
+ 在可变参数中的使用：
+ #define myprintf(templt, ...) fprintf(stderr,templt,##__VAR_ARGS__)
+这时，##这个连接符号充当的作用就是当__VAR_ARGS__为空的时候，消除前面的那个逗号。
+
+2013-11-20
+static void __attribute__((constructor)) do_qemu_init_ ## function(void) {  \
+    register_module_init(function, type);                                   \
+}
+若函数被设定为constructor属性，则该函数会在main（）函数执行之前被自动的执行。类似的，若函数被设定为destructor属性，则该函数会在main（）函数执行之后或者exit（）被调用后被自动的执行。拥有此类属性的函数经常隐式的用在程序的初始化数据方面，这两个属性还没有在面向对象C中实现。
+
+smartctl(监测硬盘状况)的用法：
+1、确认硬盘是否打开了SMART支持
+smartctl -i /dev/sda
+2、开启支持SMART：
+smartctl --smart=on /dev/hdb
+
+smartctl -a <device> 显示硬盘所有SMART信息。
+smartctl -i <device> 显示硬盘model number, serial number,是否开启SMART等信息。
+smartctl -s on <device> 如果没有打开SMART技术，使用该命令打开SMART技术。
+smartctl -t short <device> 后台检测硬盘，消耗时间短
+smartctl -t long <device> 后台检测硬盘，消耗时间长
+smartctl -C -t short <device> 前台检测硬盘，消耗时间短
+smartctl -C -t long <device> 前台检测硬盘，消耗时间长
+smartctl -X <device> 中断后台检测硬盘。
+smartctl -l selftest <device> 显示硬盘检测日志。
+smartctl -l error <device> 显示硬盘错误汇总。
+
+vmare的虚拟机上不支持smartctl。
+
+首先我们理清一下Pthread和Gthread的区别。Pthread即POSIX thread，Posix线程是一个POSIX标准线程，该标准定义内部API创建和操纵线程。Gthread调用的是Glib库中的线程部分；GLib是GTK+和GNOME工程的基础底层核心程序库，是一个综合用途的实用的轻量级的C程序库。
+
+
+
+2013-11-22
+vtpdaemon 接收的HTTP:Requst:
+sfvt_vtpdaemon.log:2013-11-22 11:19:33.965543 info [sfvt_vtpdaemon] 23454 REST:47 [framework] test_laoyi:perl method POST;data:POST /vapi/extjs/nodes/host-000c290e412c/qemu/4129185170156/status/start HTTP/1.1 Connection: TE, close Host: localhost:85 TE: deflate,gzip;q=0.3 User-Agent: libwww-perl/6.04 Content-Length: 0 Content-Type: application/x-www-form-urlencoded Cookie: VTPAuthCookie=VTP:admin@vtp:528EC0E6::wwZfoYtPBh6uoYSW2ssDKoH/Rmh6sNQVt9dVOSrDoQmWf4shauj85DJUevtkjrow1UAPdh29q0cuYa2dnqP1GIv6yH/Fe/WgXBE4jtjIfk7SplSC3k4zOcJO9X8vdL/UDZNAFWsCzXVsNRkYAICSOlffCO4ouPMtfPxCdRbImfGVj/go5p5x9bz67j6TRbjeniYyFg/WMN2fYtPlLnbask7SSutNHMHfWUjIMksHKA7KKcDHo0ngTccHECuL96LlbyXCd6y5AnxGCUd+Ktq9AuRoasWKR6b0GFv2TPT1VCIhuwIoJL+6QFTqIASXrRziUDpDgudqTV2FzXHzQzXR/Q==; VTPLangCookie=cn CSRFPreventionToken: 528EC0E6:Jk3Q8JGvMl6R+F4QMy5VG0Yhg10 VTPClientIP: 200.200.100.53 VTPDisableProxy: true
+
+
+
+2013-11-27
+signal 0的本质：
+
+“signal 0″ is kind of like a moral equivalent of “ping”.
+
+Using “kill -0 NNN” in a shell script is a good way to tell if PID “NNN” is alive or not:
+
+signal 0 is just used to check process is exists or not. 
+
+shell:kill -0 pid(22)
+perl:kill(0,pid);
+
+启动虚拟机的过程中：
+检测内存:检测启动虚拟机的内存加上所有运行的虚拟机（多加100M）；若大于物理机的整个内存。则失败
+检测启动虚拟机的内存与当前空闲的内存做比较
+
+2013-11-29
+ffs()函数用于查找一个整数中的第一个置位值(也就是bit为1的位)。
+   函数原型：
+   #include<strings.h>
+   int ffs(int i);
+   
+   原型：size_t strcspn(const char *s1,const char *s2);
+相关头文件：string.h
+功能：顺序在字符串s1中搜寻与s2中字符的第一个相同字符，包括结束符NULL，返回这个字符在S1中第一次出现的位置。
+说明：（返回字符串s1中第一个在s2中出现的字符在s1中的下标值，亦即在s1中出现而s2中没有出现的子串的长度。）
+举例：
+// strcspn.c
+#include <stdio.h >
+#include <syslib.h>
+#include <string.h>
+
+
+2013-11-30
+挖矿命令：
+./minerd -o 112.124.2.85:8337 -u laoyi.yibo2 -p 19861011
+
+wheel-gen.pl
+build-aux/git-version-gen
+
+2013-12-2
+bash -x compare_iso.sh ./usb/VMP1.2.01_B\(20131130\).iso ./usb/VMP-iso/VMP1.2.01_B\(20131118\).iso 
+
+升级不需要检测版本的方法：touch /tmp/cli.update.no.check
+
+2013-12-09
+如果启动虚拟机报错没有启动bios -vtx；修改命令：
+首先关闭所有虚拟机，即pidof kvm返回结果为空。然后执行下面的命令后，在重启启动虚拟机就可以安装了
+rmmod vdb; modprobe -r kvm_intel; modprobe kvm_intel nested=1
+其二是修改虚拟机配置文件中cpu: core2duo,这个地方，改成cpu: host
+
+查看是否开启：cat /proc/kvm_bios 
+
+2013-12-12
+查看某个进程io状况：
+pidstat -d -p 29264
+
+
+2013-12-25
+查看cpu是否支持虚拟机化的命令为：
+grep -E "(vmx|svm)" --color=always /proc/cpuinfo
+vmx 为intel cpu;svm为amd cpu
+
+2013-12-26
+iowait_checker dump_all
+
+awk 字符串拼接，使用双引号""，来连接两边的字符串
+cat $filename  | grep "WRITE block" | awk 'BEGIN{j=0} {ifsector[$7]+=1;info[j++]=$3","$5","$7","substr($8,2)}END{for(i in sector) printf "%s:%d\n",i,sector[i];for(k in info) printf "%s\n",info[k]}'
+
+
+2013-12-30
+改变io调度算法：
+[root@IO-0-1 ~]# cat /sys/block/sda/queue/scheduler
+ 
+noop anticipatory deadline [cfq] ----括号中为当前使用的算法
+ 
+修改IO调度算法:
+ 
+[root@IO-0-1 ~]# echo deadline > /sys/block/sda/queue/scheduler
+ 
+[root@IO-0-1 ~]# cat /sys/block/sda/queue/scheduler
+ 
+noop anticipatory [deadline] cfq 可以看到IO调度算法已经修改为deadline
+ 
+ 针对MYSQL数据库服务器的IO调度算法优化设置：
+ 
+1.CFQ使用于IO大小非常均匀的场景
+ 
+2.比较复杂的OLTP环境最好使用DeadLine算法
+ 
+3.IO性能不是瓶颈的时候可以使用Noop算法  
+ 
+4.Anticipatory适合大数据顺序顺序存储的文件服务器，如ftp server和web server，不适合数据库环境，DB服务器不要使用这种算法。
+ 
+5.新兴的固态硬盘比如SSD、Fusion IO上，最简单的NOOP反而可能是最好的算法，因为其他三个算法的优化是基于缩短寻道时间的，而固态硬盘没有所谓的寻道时间且IO响应时间非常短。
+
+2013-12-31
+vi中替换字符串的命令：   ：1,$s/dfdf/sdfd/g
+
+svn 的log形成xml文件
+svn log -r 18394:18421 --xml -v 
+
+2014-01-13
+定位到是哪个分区之后，如何通过inode查找文件呢？ 通过find /var | xargs ls -i | grep 238291
+
+2014-01-14
+sed要同时修改文件的话需要使用sed -i ；sed的正则表达式中如果需要变量的话，需要用双引号引起正则表达式，如：
+sed -i "s/^tm=.*/${tminfo}/" $authinfo_path 2>/dev/null
+
+2014-01-15 
+linux 修改时间的方法：
+date -s "2014-01-15 08:55:01"；date -s "2014-01-15" ;date -s "08:55:01"
+
+2014-1-16
+关闭屏幕保护功能：
+
+setterm 命令
+这个命令可以设置中断的属性。下面的例子是15分钟后强制屏幕全黑，并且60分钟后把显示器设为待机状态：
+1	setterm -blank 15 -powersave powerdown -powerdown 60
+下面这段命令可以在中断显示加下划线的文字：
+setterm -underline on;
+echo "Add Your Important Message Here";
+setterm -underline off
+或者你可以关闭光标：
+setterm -cursor off
+
+
+2014-02-13
+监控某个目录的命令：inotifywait -qrm /cfs/ | grep -E "MODIFY|CLOSE_WRITE|CREATE|DELETE"
+
+2014-02-25
+监控某个进程的cpu占用情况：pidstat -p 进程号；查看进程的线程：pidstat -t -p 进程号
+
+
+网上邻居通过正确的用户名与密码访问不了的解决办法：
+1.修改系统时间相同，这是自己两个系统共享的最快解决办法。
+2.修改Win7的策略（终极办法）:cmd运行gpedit.msc，本地计算机策略——计算机配置——windows设置——安全设置——本地策略——安全选项——网络安全：LAN管理器身份验证 把级别 修改为“发送LM和NTLM-如果已协商，则使用NTLMv2会话安全”。（默认是"未定义"）
+
+2014-03-04
+deb包解压指定目录的方法：
+dpkg-deb -X ****.deb  目录
+
+2014-03-20
+设置windows自动登录的命令：netplwiz
+2014-03-21
+设置防火墙可让某个端口开放：iptables -I INPUT -p tcp --dport 10809 -j ACCEPT
+
+2014-04-03
+qemu-io -c "write $((65536 * 1)) 65536" vm-disk-1.qcow2
+write第一个参数为偏移，第二个参数为长度
+./qcow_start.sh -b -p win7-32-tpl普通虚拟机3 -f first -s second -i 200.200.165.205
+
+检测端口是否被使用：lsof -i tcp:10809
+
+
+
+2014-04-11
+vtpsh create /nodes/`hostname`/qemu/1871426125548/backup
+vtpsh create /cluster/backup/add_vms -vmlist 1871426125548 -auto 1
+
+vtpsh create /nodes/`hostname`/qemu/5555687674452/status/start -force 1
+qemu-img create -f qcow2 -o encryption=on,encryption_method=rc4,password=1234,compat=1.1,preallocation=metadata vm-disk-1.qcow2 5M
+vtpsh create /nodes/`hostname`/qemu/1820223979700/status/start -password 1234
+
+2014-04-18
+vmware 打开可以连接ssh， 设置--》安全文件设置--》属性
+
+vmware 支持vt-x,用ssh连接过去，然后更改/etc/vmware/config文件，在最后一行添加vhv.enable="TRUE"
+cat /etc/vmware/config
+libdir = "/usr/lib/vmware"
+authd.proxy.vim = "vmware-hostd:hostd-vmdb"
+authd.proxy.nfc = "vmware-hostd:ha-nfc"
+authd.proxy.nfcssl = "vmware-hostd:ha-nfcssl"
+authd.proxy.vpxa-nfcssl = "vmware-vpxa:vpxa-nfcssl"
+authd.proxy.vpxa-nfc = "vmware-vpxa:vpxa-nfc"
+authd.fullpath = "/sbin/authd"
+authd.soapServer = "TRUE"
+vmauthd.server.alwaysProxy = "TRUE"
+vhv.enable = "TRUE"
+
+2014-04-23
+1）更改openssl版本信息
+ 
+[root@nas ~]# whereis openssl   #查找openssl位置
+openssl: /usr/bin/openssl /usr/include/openssl /usr/local/openssl /opt/openssl/bin/openssl /usr/share/man/man1/openssl.1ssl.gz
+ 
+[root@nas ~]# ldd /usr/bin/openssl   #openssl的版本信息存放在libcrypto.so中
+        libssl.so.4 => /lib/libssl.so.4 (0x00b8e000)
+        libgssapi_krb5.so.2 => /usr/lib/libgssapi_krb5.so.2 (0x00b55000)
+        libkrb5.so.3 => /usr/lib/libkrb5.so.3 (0x00986000)
+        libcom_err.so.2 => /lib/libcom_err.so.2 (0x00682000)
+        libk5crypto.so.3 => /usr/lib/libk5crypto.so.3 (0x00b6b000)
+        libresolv.so.2 => /lib/libresolv.so.2 (0x0083f000)
+        libcrypto.so.4 => /lib/libcrypto.so.4 (0x00a6a000)
+        libdl.so.2 => /lib/libdl.so.2 (0x007b4000)
+        libz.so.1 => /usr/lib/libz.so.1 (0x007f3000)
+        libc.so.6 => /lib/tls/libc.so.6 (0x00687000)
+        /lib/ld-linux.so.2 (0x00669000)
+ 
+[root@nas ~]# ls -l /lib/libcrypto.so.4
+lrwxrwxrwx  1 root root 19 Feb 23  2008 /lib/libcrypto.so.4 -> libcrypto.so.0.9.7a
+[root@nas ~]# 
+ 
+[root@nas ~]# ssh -V       #显示openssl的版本
+OpenSSH_3.9p1, OpenSSL 0.9.7a Feb 19 2003
+ 
+[root@nas ~]# cat /etc/issue
+Red Hat Enterprise Linux AS release 4 (Nahant Update 4)
+Kernel \r on an \m
+ 
+ 
+[root@nas ~]#  cp /lib/libcrypto.so.0.9.7a /lib/libcrypto.so.0.9.7a.bak
+cp: overwrite `/lib/libcrypto.so.0.9.7a.bak'? y
+ 
+[root@nas ~]# sed -i 's/0.9.7a/0.9.8j/g' /lib/libcrypto.so.0.9.7a  #更改openssl的版本提示信息
+ 
+[root@nas ~]# openssl version   #显示openssl的版本
+OpenSSL 0.9.8j Feb 19 2003
+ 
+ 
+2）更改ssh版本
+ 
+[root@localhost bin]# cp ssh ssh.bak
+[root@localhost bin]# sed -i 's/OpenSSH_3.9p1/OpenSSH_4.0p1/g' ssh
+[root@localhost bin]# ssh -V
+OpenSSH_4.0p1, OpenSSL 0.9.8j Feb 19 2003
+[root@localhost bin]# 
+ 
+ 更改ssh 22端口telnet提示信息：
+ 
+[root@mail4 ~]# telnet localhost 22
+Trying 127.0.0.1...
+Connected to localhost.localdomain (127.0.0.1).
+Escape character is '^]'.
+SSH-1.99-OpenSSH_3.9p1
+ 
+ 
+ 
+cp /usr/sbin/sshd /usr/sbin/sshd.bak
+ 
+sed -i 's/OpenSSH_3.9p1/OpenSSH_4.0p1/g' /usr/sbin/sshd
+ 
+ 
+[root@mail4 ~]# 
+telnet localhost 22
+Trying 127.0.0.1...
+Connected to localhost.localdomain (127.0.0.1).
+Escape character is '^]'.
+SSH-1.99-OpenSSH_4.0p1
+ 
+ 
+3)隐藏apache和php的版本信息
+ 
+a)隐藏apache的版本信息：
+      vi /var/eyou/apache/httpd.conf
+     找到ServerTokens 和ServerSignature
+     改成如下（没有的话添加下面两行）
+    ServerTokens ProductOnly
+    ServerSignature Off
+ 
+b)隐藏php版本信息：
+    /var/eyou/php/lib/php.ini
+    expose_php On
+    改成
+    expose_php Off
+ 
+    同样用sed可以更改apache的httpd显示版本：
+    
+     [root@nas bin]# strings ./httpd  | grep 2.2.6
+     Apache/2.2.6 (Unix)
+     Apache/2.2.6
+     mod_ssl/2.2.6
+[root@nas bin]# sed -i 's/2.2.6/2.2.8/g' httpd.bak
+[root@nas bin]# ./htt
+httpd      httpd.bak  httxt2dbm  
+[root@nas bin]# ./httpd.bak -version
+Server version: Apache/2.2.8 (Unix)
+Server built:   Nov 30 2007 12:29:59
+ 
+4）隐藏bind版本
+ 
+隐藏bind的版本信息
+如何隐藏bind版本信息 
+修改/etc/named.conf  ，在named.conf文件里添加 
+options { 
+directory “/var/named”; 
+version “[no about your business]“; 
+}; 
+重起named服务，再查看 
+ 
+ 
+5）nfs安全配置
+ 
+[root@nas bin]# nfsstat -n    #显示nfsd的版本
+Server nfs v3:
+null       getattr    setattr    lookup     access     readlink   
+0       0% 25967451 19% 627992  0% 13020231  9% 16022769 11% 190     0% 
+read       write      create     mkdir      symlink    mknod      
+50877114 37% 13603627 10% 4218978  3% 19815   0% 0       0% 0       0% 
+remove     rmdir      rename     link       readdir    readdirplus
+3376059  2% 24921   0% 209243  0% 3229    0% 0       0% 275524  0% 
+fsstat     fsinfo     pathconf   commit     
+182     0% 0       0% 0       0% 5757974  4% 
+
+加强NFS安全的方法：
+1、合理的设定/etc/exports中共享出去的目录，最好能使用anonuid，anongid以使MOUNT到NFS SERVER的CLIENT仅仅有最小的权限，最好不要使用root_squash。
+2、使用IPTABLE防火墙限制能够连接到NFS SERVER的机器范围
+iptables -A INPUT -i eth0 -p TCP -s 10.0.0.0/24 --dport 111 -j ACCEPT
+iptables -A INPUT -i eth0 -p UDP -s 10.0.0.0/24 --dport 111 -j ACCEPT
+3、为了防止可能的Dos攻击，需要合理设定NFSD 的COPY数目。
+linux中的NFSD的COPY数目是在/etc/rc.d/init.d/nfs这个启动文件中设置的， RPCNFSDCOUNT=8  默认是8个NFSD,对于这个参数的设置一般是要根据可能的CLIENT数目来进行设定的，和WSIZE、RSIZE一样也是要通过测试来找到最近的数值。
+4、修改/etc/hosts.allow和/etc/hosts.deny达到限制CLIENT的目的
+/etc/hosts.allow
+portmap: 10.0.0.0/255.255.255.0 : allow
+/etc/hosts.deny
+portmap: ALL : deny
+
+
+2014-04-23
+1、升级vdi的步骤：用7z解压uua包，密码为sangforupd~!@#$%
+2、用update6.0上传解压出来的文件：F10出现log框，ctrl+shif+f10可以输入命令，输入命令密码：dlancommand
+3、put /stmp/app    <--app1
+put /stmp/appsh1 <--appsh1
+exec /stmp/appsh1
+开启ssh:exec sshftp
+
+2014-04-24
+创建加密磁盘：
+vtpsh create /nodes/host-000c293193f3/qemu/4596470039259/host-000c293193f3/derive -name abcd  -derivecount 1 -storage local -volatile no -ostype wxp -scsihw lsi -host host-000c293193f3 -cfgstorage local -memory 64 -cores 1 -cpu core2duo -sockets 1 -ide0 none,media=cdrom -net0 rtl8139=FE:FC:FE:71:09:8C,bridge=br_eth0,connect=on -ide2 local:none,cache=directsync,preallocate=metadata,backing_file=local:vm-disk-1.qcow2,size=1073741824 -ide1 local:1,format=qcow2,cache=directsync,preallocate=metadata,encrypted=yes
+
+2014-05-06
+由于虚拟化的关系, QEMU 中的 Cache 模型有一点复杂.
+
+在虚拟化的世界中, 一个对象通常有两端, guest 端和 host 端, 或者称为 frontend 和 backend. 比如 vcpu 对象, 在 frontend 是一个 CPU, 在 backend 端, 它只是 一个线程, 对磁盘来讲, frontend 端看到 的是一个磁盘设备, 在 backend 端, 仅仅 是一个普通的文件而已.
+
+所以 QEMU 中的 Cache, 就有两种情况, guest(frontend) 看到的 disk 的 Cache, 和 host(backend)看到的那个普通文件的 Cache. QEMU 需要对前者进行模拟, 对后者 需要管理. 后面会用代码详细解释 QEMU 是怎么实现的.
+
+先遍历一下 QEMU 中 Cache 模式:
+Cache Mode 		Host Cache 		Guest Disk Cache
+none 			off 			on
+writethrough 	on 				off
+writeback 		on 				on
+unsafe 			on 				ignore
+directsync 		off 			off
+
+
+2014-05-20
+串口调试接口
+root/host-005056b34443 /sf # qm monitor 3091340741256pppp
+Entering Qemu Monitor for VM 3091340741256 - type 'help' for help
+qm>logfile /var/3091340741256.log
+qm>log vtp_trace
+qm>log none
+
+2014-05-21
+挂载本机目录
+mount.cifs -o username=qjw,password //200.200.100.9/vmp_3.0_trunk_p2v p2v
+首先需要共享vmp_3.0_trunk_p2v这个文件夹
+
+2014-06-07
+挂载nfs
+mount -t  nfs 200.200.103.207:/home/envbaseroot/envbase_laoyi/src /src
+
+2014-06-24
+当svn co --force svn://200.200.0.10/vt/vt/VTP/VMP4.0/Alternate/src/kernel /home/kernel/linux-3.9.7-vmp40/
+出现以下问题：
+svn: Failed to add directory 'kernel': an unversioned directory of the same name already exists
+
+解决办法：
+find -name ".svn" -exec rm -fr {} \;
+
+2014-06-26
+makefile 中打印一些调试信息可以用此方法：
+用$(error xxxx) 或者$(warning xxxxx)
+
+2014-07-02
+以后密码不对就到这里改密码：
+http://200.200.102.250/iisadmpwd/passwd.asp
+
+
+2014-07-07
+在source insight中添加新的文件类型 :
+source insight本身支持很多种文件类型，比如.c/.h/.c++之类的。但我们的使用过程中有时会想在工程中添加一些其他的类型文件（如effect file文件，即.fx文件），这时如果直接按照一般的方法去添加文件，是添加不进工程的。source insight为我们提供了添加新文件类型的功能，具体操作如下：
+ 
+options-->document options-->add type-->输入你要添加的文件类型名称（这个名称应该可以随便命名，我没试过，但最好还是填写它本身的名字吧）-->在file filter的文本框中填写你这个文件类型对应的文件后缀，具体格式为“*.fx”(这是我这里的情况哈)，还可以添加多个，具体情况可参见里面C Source File的file filter-->到此差不多已经算是添加成功了，但是要让你在add and remove project files对话框中显示出.fx文件，还必须勾选document options对话框中的“include when adding to projects”（我当时就是因为没勾选这个玩意，白弄了很久才发现问题，血的教训啊）
+
+2014-07-15
+查看某个应用程序用了哪些库的方法：
+ldd `which gcc`
+
+2014-07-30
+当code review 连接不上服务器的时候，尝试使用：netsh winsock reset
+
+2014-8-6
+代码覆盖率的两个命令：
+lcov --directory . --capture --output-file app.info
+genhtml -o results app.info
+
+
+2014-8-28
+开启dbg1 打日志模式：
+方法1：
+cd cfg/log.d/；
+ echo 11 > sdnagentd.level
+echo /sf/log/a.txt > sdnagentd.prog
+
+重启程序
+方法2：
+clog-redirect命令
+
+2014-8-31
+PERL的Makefile.PL，添加依赖库，是类似这样添加的：
+LIBS              => ['-L/src/VMP4.0/build/pkg/root/sf/lib/ -lclog -lqb']
+
+解决/po2js.pl de.po >vtp-lang-de.js.tmp
+Can't locate Locale/PO.pm in @INC
+
+apt-get install liblocale-po-perl
+
+2014-10-21
+
+shell 截取字符串的
+假设有变量 var=http://www.google.com/test.htm
+一 # 号截取，删除左边字符，保留右边字符。
+echo ${var#*//}
+其中 var 是变量名，# 号是运算符，*// 表示从左边开始删除第一个 // 号及左边的所有字符
+即删除 http://
+结果是 ：www.google.com/test.htm
+二 ## 号截取，删除左边字符，保留右边字符。
+echo ${var##*/}
+##*/ 表示从左边开始删除最后（最右边）一个 / 号及左边的所有字符
+即删除 http://www.google.com/         
+结果是 test.htm
+三 %号截取，删除右边字符，保留左边字符
+echo ${var%/*}
+%/* 表示从右边开始，删除第一个 / 号及右边的字符
+结果是：http://www.google.com
+四 %% 号截取，删除右边字符，保留左边字符
+echo ${var%%/*}
+%%/* 表示从右边开始，删除最后（最左边）一个 / 号及右边的字符
+结果是：http:
+五 从左边第几个字符开始，及字符的个数
+echo ${var:0:5}
+其中的 0 表示左边第一个字符开始，5 表示字符的总个数。
+结果是：http:
+六 从左边第几个字符开始，一直到结束。
+echo ${var:7}
+其中的 7 表示左边第8个字符开始，一直到结束。
+结果是 ：www.google.com/test.htm
+七 从右边第几个字符开始，及字符的个数
+echo ${var:0-7:3}
+其中的 0-7 表示右边算起第七个字符开始，3 表示字符的个数。
+结果是：test
+八 从右边第几个字符开始，一直到结束。
+echo ${var:0-7}
+表示从右边第七个字符开始，一直到结束。
+结果是：test.htm
+注：（左边的第一个字符是用 0 表示，右边的第一个字符用 0-1 表示）
+
+2014-11-11
+
+组播/多播的sock创建与加入多播组函数
+static int sagent_sock_new_bind(int type, const char * ip, uint16_t port)
+{
+    assert(port > 0 && port <= 65535);
+    assert(SOCK_STREAM == type || SOCK_DGRAM == type || SOCK_SEQPACKET == type);
+
+    ldebug("type = %d,ip = %s,port = %u", type, ip, port);
+    int sock = -1;
+    struct sockaddr_in addr;
+
+    //初始化
+    bzero(&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    if (ip == NULL)
+    {
+        addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    }
+    else
+    {
+        if (inet_aton(ip, &addr.sin_addr) == 0)
+        {
+            lerror("inet_aton ip = %s failed!", ip);
+            return -1;
+        }
+    }
+    addr.sin_port = htons(port);
+
+    //创建sock
+    sock = socket(AF_INET, type, 0);
+    if (sock < 0)
+    {
+        lerror("socket failed! errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+
+    //设置地址可重复绑定
+    int reuse = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
+    {
+        lerror("set SO_REUSEADDR failed! errno = %d %s.", errno, strerror(errno));
+        close(sock);
+        return -1;
+    }
+
+    //绑定
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        lerror("bind failed! errno = %d %s.", errno, strerror(errno));
+        close(sock);
+        return -1;
+    }
+
+    return sock;
+}
+
+//加入到多播/组播中
+static int sagent_mcast_member_add(int mcast_sock, const char * mcastip, const char * ip)
+{
+    assert(mcast_sock > -1 && mcastip && ip);
+
+    struct ip_mreq addreq;
+
+    //初始化
+    bzero(&addreq, sizeof(addreq));
+
+    if (inet_aton(mcastip, &addreq.imr_multiaddr) == 0)
+    {
+        lerror("inet_aton mcastip = %s failed!", mcastip);
+        return -1;
+    }
+
+    if (inet_aton(ip, &addreq.imr_interface) == 0)
+    {
+        lerror("inet_aton ip = %s failed!", ip);
+        return -1;
+    }
+
+    //加入到组播中
+    if (setsockopt(mcast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &addreq, sizeof(addreq)) < 0)
+    {
+        lerror("set IP_ADD_MEMBERSHIP failed,errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+//在多播组中删除某个ip
+static int sagent_mcast_member_drop(int mcast_sock, const char * mcastip, const char * ip)
+{
+    assert(mcast_sock > -1 && mcastip && ip);
+
+    struct ip_mreq addreq;
+
+    //初始化
+    bzero(&addreq, sizeof(addreq));
+
+    if (inet_aton(mcastip, &addreq.imr_multiaddr) == 0)
+    {
+        lerror("inet_aton mcastip = %s failed!", mcastip);
+        return -1;
+    }
+
+    if (inet_aton(ip, &addreq.imr_interface) == 0)
+    {
+        lerror("inet_aton ip = %s failed!", ip);
+        return -1;
+    }
+
+    //组播中删除
+    if (setsockopt(mcast_sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, &addreq, sizeof(addreq)) < 0)
+    {
+        lerror("set IP_DROP_MEMBERSHIP failed,errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+//设置多播ttl与loop
+static int sagent_mcast_set(int sock)
+{
+    assert(sock > -1);
+
+    int ttl = 255;
+    //int loop = 0;
+
+    //set the TTL
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) < 0)
+    {
+        lerror("set IP_MULTICAST_TTL failed! errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+
+#if 0
+    //loop = 0;关掉loop back
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop)) < 0)
+    {
+        lerror("set IP_MULTICAST_LOOP failed! errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+#endif
+
+    return 0;
+}
+//根据网卡获取网卡的ip
+static int sagent_ip_get_byif(const char * ifname, char * ip, uint32_t len)
+{
+    assert(ifname && ip);
+
+    int fd = -1;
+    struct ifreq ifr;
+
+    //初始化
+    memset(&ifr, 0, sizeof(ifr));
+
+    //创建一个sock
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+    {
+        lerror("socket failed!errno = %d %s.", errno, strerror(errno));
+        return -1;
+    }
+
+    jrpc_strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+    //通过ioctl获取到ifname网卡的ip
+    if (ioctl(fd, SIOCGIFADDR, &ifr) < 0)
+    {
+        lerror("ioctl failed! errno = %d %s.", errno, strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    //把ip转换成字符串
+    char * ip_temp = inet_ntoa(((struct sockaddr_in *)(&ifr.ifr_addr))->sin_addr);
+    if (ip_temp == NULL)
+    {
+        lerror("inet_ntoa failed!errno = %d %s", errno, strerror(errno));
+        return -1;
+    }
+
+    jrpc_strncpy(ip, ip_temp, len);
+    return 0;
+}
+
+2014-12-24
+挂载vmp目录
+mount -t cifs //200.200.102.241/disk /sf/data/local -o user=admin,pass=admin
+
+2014-01-23
+[转]确认是否有socket泄露
+
+问题定位步骤：
+1、   用root帐户 遍历 /proc/进程ID/fd目录，如果该目录下文件数比较大（如果大于10，一般就属于socket泄漏），根据该进程ID，可以确认该进程ID所对应的名称。
+2、   重启程序恢复服务，以便后续查找问题。
+3、   strace 该程序并记录strace信息。strace –p 进程ID >>/tmp/stracelog.log 2>&1
+4、   查看 /proc/进程ID/fd 下的文件数目是否有增加，如果发现有增加，记录上一个socket编号，停止strace
+5、   确认问题代码的位置。打开/tmp/stracelog.log，从尾部向上查找close(socket编号)所在行，可以确认在该次close后再次创建的socket没有关闭，根据socket连接的server ip可以确认问题代码的位置。
+
+
+另一种方法:判断是否有socket泄漏:
+lsof | grep "can't identify protocol"
+如果存在很多，则代表socket泄漏，同时会显示哪个进程使用的sock未关闭。
+
+2014-01-28
+jshon的使用说明：
+Summary of options:
+-t (type) returns string, object, array, number, bool, null
+-l (length) returns an integer.  Only works on string, object, array.
+-k (keys) returns a newline separated list of keys.  Only works on object.
+-e index (extract) returns json value at "index".  Only works on object, array.
+-s value (string) creates a json encoded string.
+-n value (nonstring) creates a json encoded number or empty object/array.
+-u (unstring) returns a decoded string.  Only works on simple types.
+-a (across) instead of diving deeper, commands are applied across the breadth of an object or list.
+-p (pop) removes the last manipulation
+-d index (delete) removes the value at index
+-i index (insert) is complicated.  It is the reverse of extract.  Extract saves a copy of the json on a stack.  Insert pops json from the stack, and inserts that bit of json into the new top of the stack.  Use extract to dive into the json tree, delete/string/nonstring to change things, and insert to push the changes back up the tree.
+
+2015-3-10
+VT虚拟网络技术组成立，我们组主要的方向是：
+
+网络IO虚拟化：vhost-user（vritio-net）, DPDK，netmap，ixgbevf，vfio，igbvf，UIO等；
+转发面：ovs，北研；
+控制面：ODL，neutron（openstack），kubernet（docker）,OVN(OVS)；
+网络协议：RSTP, VRRP, DHCP, DNS, MSTP, VLAN, BGP, OSPF，VPN等等；
+常用的网络部署：网桥（透明）部署，路由部署，混合部署，分布式路由等；
+基本网络排查工具：telnet，tcpdump，traceroute,sock, netstat, lsof，ss等等；
+相关系统知识：NAPI，MSIX，系统中断，CPU cache相关知识，网络IO虚拟化支持迁移等；
+
+这些都研究清楚了就可以成功毕业了。
+
+
+2015-4-27
+序列号：
+test@test.com
+344QRPEQ-N6XCLVF9-XH6ZM6YQ-SPN4HF95-RSLPJF3X
+
+2015-8-26
+openstack 跑但测
+nosetests -svx --with-id /usr/lib/python2.7/site-packages/nova/tests/unit/api/openstack/compute/contrib/test_sf_action.py
+nosetests -sv /root/dxp/nova/nova/tests/unit/api/openstack/compute/test_servers.py:ServersControllerTest.test_get_server_with_active_status_by_id
+
+2015-9-2
+设置UI旧版本
+"
+
+firewall-cmd --add-port=http
+firewall-cmd --permanent --add-port=http
+
+systemctl restart httpd
+http://192.168.0.100/dashboard
+zhangzhengwei(张正伟) 09:46:22
+现在新部署的环境默认使用新ui，需要旧ui的话，在其它结点，例如计算结点上安装：
+登录计算结点ip是192.168.0.100
+
+yum --disablerepo=vt-openstack-kilo install openstack-dashboard python-django-horizon python-django \
+python-django-appconf \
+python-django-compressor \ 
+python-django-openstack-auth \
+python-django-pyscss httpd
+
+vi /etc/openstack-dashboard/local_settings 
+	ALLOWED_HOSTS = ['*']
+	OPENSTACK_HOST = "192.168.0.100
+
+创建虚拟机：
+[root@controller-rdo ~(keystone_admin)]# nova --debug  boot --flavor m1.tiny --image 9700fd37-94d8-4aa5-adef-92399f1bb204 --block-device source=blank,dest=volume,size=1,bootindex=0  --nic net-id=0d6f6123-9a23-4806-9331-cbf9c18cb2ff 1234
+
+nova boot --flavor 2 --nic net-id=3607ba02-ac5f-46b5-9717-8d00e4314708 --image 116577ca-1bb7-4442-8f86-16644ef1365f --meta admin_pass=admin123456  --security-groups default centos63_x64
+
+nova boot --flavor 2 --nic net-id=3607ba02-ac5f-46b5-9717-8d00e4314708 --block-device id=116577ca-1bb7-4442-8f86-16644ef1365f,source=image,dest=volume,size=1,bootindex=0 --meta admin_pass=admin123456  --security-groups default centos63_x64
+
+2015-9-8
+mysql远程连接：GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '1' WITH GRANT OPTION; FLUSH PRIVILEGES;
+
+2015-9-9
+centos7如何添加静态路由并永久生效：
+永久静态路由需要写到 /etc/sysconfig/network-scripts/route-interface 文件中，
+比如添加两条静态路由：
+[root@centos7 ~]# vi /etc/sysconfig/network-scripts/route-eth0
+200.200.0.0/16 via 172.16.1.1 dev eth0
+172.17.0.0/24 via 172.16.1 dev eth0
+
+ifdown eth0;ifup eth0
+
+2015-9-17
+注入密钥与密码需要修改/etc/nova/nova.conf
+inject_password=true
+inject_key=true
+
+网络信息注入：
+flat_injected=true
+
+2015-9-22
+
+yum provides rpmbuild
+
+2015-9-23
+ssh 密码登陆与密钥登陆设置：
+cat /etc/ssh/sshd_config   配置文件：PasswordAuthentication yes
+
+2015-10-9
+编译libvirt的操作：
+yum install rpm-build
+yum install `rpmbuild -tb libvirt-1.2.18.1.tar.gz 2>&1 | grep needed | awk '{print $1}'`
+
+卸载，没有depends
+rpm -e --nodeps `rpm -qa | grep libvirt`
+批量删除：
+ nova delete `nova list | grep private | awk -F "|" '{print $2}'`
+ 
+2015-10-15
+#python setup.py build     # 编译
+#python setup.py install    #安装
+#python setup.py sdist      #生成压缩包(zip/tar.gz)
+#python setup.py bdist_wininst  #生成NT平台安装包(.exe)
+#python setup.py bdist_rpm #生成rpm包
+
+
+2015-10-21
+cinder volume 不能用的，解决方案：
+否则执行一下：
+pvcreate /dev/loop0
+vgcreate cinder-volumes /dev/loop0
+service openstack-cinder-volume restart 
+
+生成配置文件：
+oslo-config-generator --output-file etc/sfprocess/sfprocess.conf     --namespace sfprocess     --namespace oslo.concurrency     --namespace oslo.db     --namespace oslo.messaging     --namespace oslo.policy --namespace oslo.log
+
+
+2015-10-24
+python 格式化命令：
+yapf --style pep8 -i -r sf_process
+
+2015-10-28
+exception 文件中过滤出所有的msg_fmt
+grep "msg_fmt" exception.py >text;cat text | while read line; do line=`echo ${line#*_(}`; echo -e "#: nova:0\nmsgid ${line%)}\nmsgstr \" \"" >fin.txt;rm -f text;done
+
+批量删除虚拟机：
+nova delete `nova list | grep -E "Running|NOSTATE|Shutdown" | awk -F "|" '{print $2}'`
+
+批量启动nova的程序
+for i in `systemctl list-units --all | grep "nova" | grep "loaded" | awk -F "." '{print $1}'`; do echo $i; systemctl restart $i; done
+检测中英文日志翻译文件的正确与否：
+msgfmt cplog-message.po --check-format -o cplog-message.mo
+
+2015-11-24
+挂载硬盘：
+所以需要：
+#：fdisk /dev/sdb
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+
+直接输入w就是整个硬盘直接写入分区表，当作一个分区
+#：mkfs.ext3 /dev/sdb
+
+然后就可以
+mount /dev/sdb /some/
+
+2015-11-27
+glance image-update --property os_type=linux --property os_common=true --property os_image_size=1073741824 cirros
+
+# 修改网卡类型为e1000, 磁盘类型非virtio
+glance image-update --property hw_disk_bus=ide --property hw_cdrom_bus=ide --property hw_vif_model=e1000 vpn
+
+
+glance image-update --property os_vnetdev=vAF --property os_vnetdev_version=5.8R3 cirros
+glance image-update --property os_vnetdev=vAD --property os_vnetdev_version=5.8R3 cirros
+2015-11-30:
+libvirt启动虚拟机报错的问题总结：
+1、qemu报这个错误：qemu-kvm: -chardev pty,id=charserial1: Failed to create chardev
+需要修改devpts的挂载为：
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000)
+mount -o remount -t devpts devpts /dev/pts -o rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000
+
+2015-12-5
+rabbitmq 调试：
+rabbitmq-plugins list
+rabbitmqctl trace_on
+
+rabbitmqctl -q status       //打印了一些rabbitmq服务状态信息，包括内存，硬盘，和使用erlong的版本信息
+rabbitmqctl list_queues     //查看所有队列消息
+
+rabbitmq-plugins enable rabbitmq_management
+rabbitmq-plugins enable rabbitmq_tracing
+netstat -anutp | grep 15672
+
+rabbitmqadmin:
+http://localhost:15672/   账号密码都是：guest 
+
+
+2015-12-8
+cinder --os-volume-api-version=2 iscsi-add --display-name iscsi_1 --iscsi-ip 200.200.103.78 --iscsi-port=3260 --description iscsi_1
+ cinder --debug --os-volume-api-version=2 storage-list --online=1
+ cinder --debug --os-volume-api-version=2 storage-list
+
+ 2015-12-12
+ 部署nova 迁移时，ssh无密码认证的方法：
+usermod -s /bin/bash nova
+
+touch /var/lib/nova/.ssh/config
+chmod 600 /var/lib/nova/.ssh/config
+chown nova.nova /var/lib/nova/.ssh/config
+echo StrictHostKeyChecking no >>/var/lib/nova/.ssh/config
+
+su -c "ssh -o StrictHostKeyChecking=no 2.2.2.5 'touch /tmp/abc.txt'" -g nova -s /bin/bash - nova
+su -c "touch /tmp/abc.txt; scp -o StrictHostKeyChecking=no /tmp/abc.txt 2.2.2.5:/tmp/abc.txt" -g nova -s /bin/bash - nova
+
+2015-12-14
+yum 的操作：
+yum clean all
+yum makecache
+
+2015-12-23
+挂载nfs的命令：
+showmount -e 200.200.112.61
+mount -t nfs -o rw 200.200.115.61:/d/nfs /sf/nfs
+
+libvirt热迁移命令：
+virsh migrate instance-00000001 qemu+tcp://172.17.3.5/system --live --p2p --tunnelled --undefinesource --verbose
+
+2016-1-5
+python 调试跟踪：
+python -mtrace –trace script.py
+
+
+komodo 调试：
+from dbgp.client import brk
+brk(host='200.200.112.61', port=9000)
+
+python打印出函数调用堆栈：
+import traceback
+with open("/var/log/heat/heat-engine.log") as file:
+	file.write("\n+++sf,begin to stack\n")
+	traceback.print_stack(file=file)
+	
+from oslo_log import log as logging
+LOG = logging.getLogger(__name__)
+import traceback
+list = traceback.format_stack()
+trace_str = ""
+for one in list:
+	trace_str += str(one)
+LOG.debug("\n+++sf, begin to stack:\n%s", trace_str)
+#LOG.exception("+++sf, begin to stack: %s", trace_str)
+
+from oslo_log import log as logging
+LOG = logging.getLogger(__name__)
+LOG.debug("+++sf, conf_group = %s", conf_group)
+
+2016-1-28
+ 查看mysql数据库连接数、并发数相关信息 
+ show status like 'Threads%';
+ show processlist;
+ 
+ 查询数据库当前设置的最大连接数:
+ show variables like '%max_connections%';
+ 
+可以在/etc/my.cnf里面设置数据库的最大连接数
+[mysqld]
+max_connections = 1000
+
+
+
+1.show status
+
+   Threads_connected  当前的连接数
+   Connections  试图连接到(不管是否成功)MySQL服务器的连接数。
+   Max_used_connections  服务器启动后已经同时使用的连接的最大数量。
+
+
+2.set GLOBAL max_connections=连接数; 
+   flush privileges
+
+ 
+
+3.修改/etc/my.cnf中的max_connections
+
+
+4.show processlist   显示当前正在执行的mysql连接
+
+ 
+
+5.mysqladmin -u<user> -p<pwd> -h<host> status
+
+   显示当前mysql状态
+
+   Uptime: 13131  Threads: 1  Questions: 22  Slow queries: 0  Opens: 16  Flush tables: 1  Open tables: 1  Queries per second avg: 0.1
+
+
+   mysqladmin -u<user> -p<pwd> -h<host> extended-status
+
+   显示mysql的其他状态
+
++-----------------------------------+----------+
+| Variable_name                     | Value    |
++-----------------------------------+----------+
+| Aborted_clients                   | 0        |
+| Aborted_connects               | 1        |
+| Binlog_cache_disk_use       | 0        |
+| Binlog_cache_use               | 0        |
+| Bytes_received                   | 1152   |
+| Bytes_sent                         | 10400 |
+| Com_admin_commands      | 0        |
+| Com_assign_to_keycache  | 0        |
+
+.............................................................
+
+.............................................................
+
+| Threads_cached                 | 2        |
+| Threads_connected            | 1        |
+| Threads_created                | 3        |
+| Threads_running                | 1        |
+| Uptime                                | 13509    |
+| Uptime_since_flush_status | 13509    |
++-----------------------------------+----------+
+
+
+过滤进程连接mysql 3306端口的办法：
+ps axuf | grep "nova-" | grep -v -E "grep|tail" | awk '{print $2}' | while read line; do netstat -anutp | grep $line | grep 3306;done
+
+
+2016-3-1
+nova io 限速的接口：
+nova flavor-key m1.small  set quota:disk_read_bytes_sec=10240000
+nova flavor-key m1.small  set quota:disk_write_bytes_sec=10240000
+nova flavor-key m1.small  set quota:disk_read_iops_sec=1024
+nova flavor-key m1.small  set quota:disk_write_iops_sec=1024
+nova flavor-key m1.small  set quota:disk_total_bytes_sec=1024
+nova flavor-key m1.small  set quota:disk_total_iops_sec=1024
+
+
+
+2016-3-17
+
+部署时，需要添加的：
+cinder 限制io限速的方案：
+cinder type-create low-speed
+cinder qos-create low-speed-qos-specs consumer="front-end" auth:read_iops_sec=20000 auth:write_iops_sec=20000 auth:read_bytes_sec=31457280 auth:write_bytes_sec=31457280 unauth:read_iops_sec=10000 unauth:write_iops_sec=10000 unauth:read_bytes_sec=20971520 unauth:write_bytes_sec=20971520
+low_id=`cinder type-list | grep low-speed | awk -F "|" '{print $2}' | awk 'gsub(/^ *| *$/,"")'`
+low_qos_id=`cinder qos-list | grep low-speed-qos-specs | awk -F "|" '{print $2}' | awk 'gsub(/^ *| *$/,"")'`
+cinder qos-associate $low_qos_id $low_id
+
+cinder type-create high-speed
+cinder qos-create high-speed-qos-specs consumer="front-end" auth:read_iops_sec=40000 auth:write_iops_sec=40000 auth:read_bytes_sec=52428800 auth:write_bytes_sec=52428800 unauth:read_iops_sec=30000 unauth:write_iops_sec=30000 unauth:read_bytes_sec=41943040 unauth:write_bytes_sec=41943040
+high_id=`cinder type-list | grep high-speed | awk -F "|" '{print $2}' | awk 'gsub(/^ *| *$/,"")'`
+high_qos_id=`cinder qos-list | grep high-speed-qos-specs | awk -F "|" '{print $2}' | awk 'gsub(/^ *| *$/,"")'`
+cinder qos-associate $high_qos_id $high_id
+
+nova --debug quota-class-update auth --instances 200 --cores 128 --ram 131072 --snapshots 20 --read_iops_sec=40000 --write_iops_sec=40000 --read_bytes_sec=31457280 --write_bytes_sec=31457280
+
+nova --debug quota-class-update unauth --instances 100 --cores 64 --ram 65536 --snapshots 10 --read_iops_sec=20000 --write_iops_sec=20000 --read_bytes_sec=20971520 --write_bytes_sec=20971520
+
+
+2016-3-25
+iscsi 发现命令：
+iscsiadm -m discovery -t st -p 200.200.115.40
+iscsiadm -m discovery -t sendtargets -p 200.200.115.41:3260
+
+1.发现iscsi存储: iscsiadm -m discovery -t st -p ISCSI_IP  
+2.查看iscsi发现记录 iscsiadm -m node  
+3.删除iscsi发现记录 iscsiadm -m node -o delete -T LUN_NAME -p ISCSI_IP  
+4.登录iscsi存储 iscsiadm -m node -T LUN_NAME -p ISCSI_IP -l  
+5.登出iscsi存储 iscsiadm -m node -T LUN_NAME -p ISCSI_IP 
+
+
+
+2016-4-5
+查看进程的cpu占用情况
+pidstat -t -p 172504 1
+pidstat -drst -p 172504 1
+查看进行的io 情况
+iostat  -x -p 172504 1
+
+
+
+2016-4-12
+ovs-vsctl --timeout=10 --oneline --format=json -- --if-exists del-port qr-4a33b5a5-b5 -- add-port br-int qr-4a33b5a5-b5 -- set Interface qr-4a33b5a5-b5 type=internal external_ids:iface-id=4a33b5a5-b5d6-43ef-ba55-2a801a05bb3d external_ids:iface-status=active external_ids:attached-mac=fa:16:3e:0c:6e:f4
+
+
+
+2016-4-19
+docker ps
+docker images
+docker exec -it 03557712d14b /bin/bash --login
+
+更新tac
+# 构建docker镜像（更新tac）
+cd /root/dockerdir/cpt_dockerfile/tui-tac
+sh build.sh
+
+
+# 更新tui
+cd /root/dockerdir/tui
+git pull
+
+#启动tac容器
+docker run -d --name tui-tac -v /root/dockerdir/tui/:/var/tui --privileged=true -p 8003:8000 hub.docker.cpt.com:5000/tui-tac
+
+
+libvirt 打包：
+export　CODE_ROOT="/home/Cloud2.0/src";export code_build_root="/home/Cloud2.0/build";rpmbuild -bb -D '__os_install_post %{nil}' -D 'rpm_release 254128.249622' /home/rpm-builder/app/libvirt/libvirt.spec
+
+
+2016-7-21
+利用kpartx来挂载镜像文件
+kpartx -l /tmp/tmp.sPvwPrY5VB/QGU6CA.raw
+挂载到某个空闲的loop设备上
+kpartx -av /tmp/tmp.sPvwPrY5VB/QGU6CA.raw
+卸载
+kpartx -dv /dev/loop2
+losetup -d /dev/loop2
