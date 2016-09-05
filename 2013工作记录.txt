@@ -1179,6 +1179,17 @@ pvcreate /dev/loop0
 vgcreate cinder-volumes /dev/loop0
 service openstack-cinder-volume restart 
 
+cinder 挂载loop0设备的方法：
+dd if=/dev/zero of=/root/mnt/sdb/floppy.img bs=512 count=10240000
+losetup /dev/loop0 /root/mnt/sdb/floppy.img
+pvcreate /dev/loop0
+vgcreate cinder-volumes /dev/loop0
+service openstack-cinder-volume restart
+
+删除某个lvm盘：
+lvremove -f cinder-volumes/volume-6cdaf208-ea4e-4d32-a714-c883a58458a9
+lvremove -f cinder-volumes   #会删除c  inder-volumes 下的所有盘
+
 生成配置文件：
 oslo-config-generator --output-file etc/sfprocess/sfprocess.conf     --namespace sfprocess     --namespace oslo.concurrency     --namespace oslo.db     --namespace oslo.messaging     --namespace oslo.policy --namespace oslo.log
 
@@ -1423,7 +1434,6 @@ iscsiadm -m discovery -t sendtargets -p 200.200.115.41:3260
 5.登出iscsi存储 iscsiadm -m node -T LUN_NAME -p ISCSI_IP 
 
 
-
 2016-4-5
 查看进程的cpu占用情况
 pidstat -t -p 172504 1
@@ -1432,10 +1442,8 @@ pidstat -drst -p 172504 1
 iostat  -x -p 172504 1
 
 
-
 2016-4-12
 ovs-vsctl --timeout=10 --oneline --format=json -- --if-exists del-port qr-4a33b5a5-b5 -- add-port br-int qr-4a33b5a5-b5 -- set Interface qr-4a33b5a5-b5 type=internal external_ids:iface-id=4a33b5a5-b5d6-43ef-ba55-2a801a05bb3d external_ids:iface-status=active external_ids:attached-mac=fa:16:3e:0c:6e:f4
-
 
 
 2016-4-19
@@ -1469,3 +1477,119 @@ kpartx -av /tmp/tmp.sPvwPrY5VB/QGU6CA.raw
 卸载
 kpartx -dv /dev/loop2
 losetup -d /dev/loop2
+
+2016-8-29
+挂载某个硬盘的方法：
+1、先格式化硬盘，分区等
+mkfs.ext4 /dev/sdb
+mkdir /mnt/sdb
+mount /dev/sdb /mnt/sdb
+
+
+docker 更换images containers目录的方法：
+service stop docker
+#拷贝目录中的数据
+rsync -aXS /var/lib/docker/.  /data/docker/
+#设置挂载目录
+echo "/data/docker /var/lib/docker  none bind 0 0" >>/etc/fstab
+#重新挂载
+mount -a
+
+docker启动一个tempest命令：
+docker run --name jacket_tempest --privileged=true -it tempest /bin/bash
+
+tempest 跑的命令：
+testr run tempest.api.volume
+
+
+centos 7 搭建安装docker，搭建docker jenkins环境：
+yum install -y docker
+#修改docker启动选项，添加host
+vi /etc/sysconfig/docker
+OPTIONS='--selinux-enabled --log-driver=journald -H=unix:///var/run/docker.sock -H=0.0.0.0:6732'
+
+运行docker registry服务：
+修改docker启动选项为：
+OPTIONS='--selinux-enabled --log-driver=journald -H=unix:///var/run/docker.sock -H=0.0.0.0:6732 --insecure-registry <REGISTRY_HOSTNAME>:5000'
+docker run -p 5000:5000 -v <HOST_DIR>:/tmp/registry-dev registry
+docker run -p 5000:5000 --privileged=true -v /home/docker_images:/var/lib/registry/ registry
+上传镜像：
+docker images
+REPOSITORY                  TAG                 IMAGE ID            CREATED             SIZE
+tempest                     latest              5f81c45f13d9        45 hours ago        870.6 MB
+jenkins                     latest              753c2e1bdef7        2 weeks ago         715.4 MB
+
+上传tempest镜像的方法：
+docker tag 5f81c45f13d9 <REGISTRY_HOSTNAME>:5000/tempest:latest
+docker push <REGISTRY_HOSTNAME>:5000/tempest:latest
+
+docker启动jenkins服务：
+chown -R 1000 /home/my_jenkins/
+docker run --name myjenkins -p 8080:8080 -p 50000:50000 --privileged=true -v /home/my_jenkins:/var/jenkins_home jenkins
+
+
+docker build 创建：
+docker build --rm=true -t 162.3.160.50:5000/tempest:2 .
+
+删除仓库中的镜像：
+curl -X GET http://162.3.160.50:5000/v2/_catalog
+
+{"repositories":["tempest"]}
+
+获取digest：
+curl --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+-I -X HEAD http://162.3.160.50:5000/v2/tempest/manifests/latest
+
+HTTP/1.1 200 OK
+Content-Length: 2425
+Content-Type: application/vnd.docker.distribution.manifest.v2+json
+Docker-Content-Digest: sha256:b7f836bcc095cc58e4f66716d8eed5f39030f9d7c1747c8a6b0b5d4c01419f3e
+Docker-Distribution-Api-Version: registry/2.0
+Etag: "sha256:b7f836bcc095cc58e4f66716d8eed5f39030f9d7c1747c8a6b0b5d4c01419f3e"
+X-Content-Type-Options: nosniff
+Date: Thu, 01 Sep 2016 11:50:40 GMT
+
+
+删除操作：
+curl  -X DELETE http://162.3.160.50:5000/v2/tempest/manifests/sha256:b7f836bcc095cc58e4f66716d8eed5f39030f9d7c1747c8a6b0b5d4c01419f3e
+
+2016-9-1
+挂载云硬盘时，connect volume出错：
+解决办法：ln -sfT /lib/udev/scsi_id /usr/bin/scsi_id
+
+由于scsi_id命令找不到
+scsi_id --page 0x83 --whitelisted /dev/disk/by-path/ip-162.3.254.249:3260-iscsi-iqn.2010-10.org.openstack:volume-99d42aab-3688-46a9-a80e-9c2b188400d2-lun-1
+
+错误信息如下：
+2016-09-01 02:03:05.730 17686 DEBUG oslo_concurrency.processutils [req-d1c9d9e6-6263-4774-a0b7-1756dd6343b3 dbbf173fc8f5471ea328933c57da25c5 8bc5aed3f0fd4fe59f511e8f5619c9be - - -] u'scsi_id --page 0x83 --whitelisted /dev/disk/by-path/ip-162.3.254.249:3260-iscsi-iqn.2010-10.org.openstack:volume-99d42aab-3688-46a9-a80e-9c2b188400d2-lun-1' failed. Not Retrying. execute /usr/lib/python2.7/dist-packages/oslo_concurrency/processutils.py:422
+2016-09-01 02:03:05.732 17686 DEBUG oslo_concurrency.lockutils [req-d1c9d9e6-6263-4774-a0b7-1756dd6343b3 dbbf173fc8f5471ea328933c57da25c5 8bc5aed3f0fd4fe59f511e8f5619c9be - - -] Lock "connect_volume" released by "os_brick.initiator.connector.connect_volume" :: held 1.434s inner /usr/lib/python2.7/dist-packages/oslo_concurrency/lockutils.py:285
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [req-d1c9d9e6-6263-4774-a0b7-1756dd6343b3 dbbf173fc8f5471ea328933c57da25c5 8bc5aed3f0fd4fe59f511e8f5619c9be - - -] [instance: 771bfe4d-d309-4654-9912-221f31f3bac2] Driver failed to attach volume 99d42aab-3688-46a9-a80e-9c2b188400d2 at /dev/vdb
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2] Traceback (most recent call last):
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/local/lib/python2.7/dist-packages/jacket/compute/virt/block_device.py", line 279, in attach
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     device_type=self['device_type'], encryption=encryption)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/local/lib/python2.7/dist-packages/jacket/compute/virt/libvirt/driver.py", line 1332, in attach_volume
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     self._connect_volume(connection_info, disk_info)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/local/lib/python2.7/dist-packages/jacket/compute/virt/libvirt/driver.py", line 1273, in _connect_volume
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     vol_driver.connect_volume(connection_info, disk_info)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/local/lib/python2.7/dist-packages/jacket/compute/virt/libvirt/volume/iscsi.py", line 89, in connect_volume
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     device_info = self.connector.connect_volume(connection_info['data'])
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/dist-packages/oslo_concurrency/lockutils.py", line 274, in inner
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     return f(*args, **kwargs)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/dist-packages/os_brick/initiator/connector.py", line 884, in connect_volume
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     device_wwn = self._linuxscsi.get_scsi_wwn(host_device)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     device_wwn = self._linuxscsi.get_scsi_wwn(host_device)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/dist-packages/os_brick/initiator/linuxscsi.py", line 115, in get_scsi_wwn
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     root_helper=self._root_helper)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/dist-packages/oslo_concurrency/processutils.py", line 363, in execute
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     env=env_variables)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/dist-packages/eventlet/green/subprocess.py", line 54, in __init__
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     subprocess_orig.Popen.__init__(self, args, 0, *argss, **kwds)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/subprocess.py", line 711, in __init__
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     errread, errwrite)
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]   File "/usr/lib/python2.7/subprocess.py", line 1343, in _execute_child
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2]     raise child_exception
+2016-09-01 02:03:05.732 17686 ERROR jacket.compute.virt.block_device [instance: 771bfe4d-d309-4654-9912-221f31f3bac2] OSError: [Errno 2] No such file or directory
+
+2016-9-2
+清空openstack 日志的方法：
+cd /var/log;find -name "*.log" | while read line; do echo >$line;done
