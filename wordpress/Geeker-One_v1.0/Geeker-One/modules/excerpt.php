@@ -11,9 +11,6 @@
 <div class="index_showbox_left_img">
 
 <a href="<?php the_permalink() ?>" title="<?php the_title(); ?> - <?php bloginfo('name'); ?>">
-<?php $str_src=get_post_thumbnail_url('full');  ?>
-      <img src="<?php echo get_bloginfo("template_url") ?>/timthumb.php?src=<?php echo $str_src; ?>&amp;h=123&amp;w=200&amp;q=90&amp;zc=1&amp;ct=1">
-
       </a>
 
 </div>
