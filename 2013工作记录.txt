@@ -1255,8 +1255,30 @@ rabbitmq-plugins enable rabbitmq_tracing
 netstat -anutp | grep 15672
 
 rabbitmqadmin:
-http://localhost:15672/   账号密码都是：guest 
+http://localhost:15672/   账号密码都是：guest
 
+(1) 新增一个用户
+
+rabbitmqctl  add_user  Username  Password
+
+(2) 删除一个用户
+
+rabbitmqctl  delete_user  Username
+
+(3) 修改用户的密码
+
+rabbitmqctl  change_password  Username  Newpassword
+
+(4) 查看当前用户列表
+
+rabbitmqctl  list_users
+
+# jacket的rabbitmq增加一个用户：
+rabbitmqctl add_user openstack admin
+rabbitmqctl set_user_tags openstack administrator
+rabbitmqctl add_vhost /openstack
+#赋予用户openstack 操作/openstack 读写权限
+rabbitmqctl set_permissions -p /openstack '.*' '.*' '.*'
 
 2015-12-8
 cinder --os-volume-api-version=2 iscsi-add --display-name iscsi_1 --iscsi-ip 200.200.103.78 --iscsi-port=3260 --description iscsi_1
@@ -1592,4 +1614,38 @@ scsi_id --page 0x83 --whitelisted /dev/disk/by-path/ip-162.3.254.249:3260-iscsi-
 
 2016-9-2
 清空openstack 日志的方法：
-cd /var/log;find -name "*.log" | while read line; do echo >$line;done
+cd /var/log;find -name "*.log" | while read line; do echo >$line;done;find -name "*.gz" | xargs rm -f;find -name "*.log.1" | xargs rm -f
+
+2016-9-5
+github的配置方法：
+ssh-keygen.exe -t rsa -C "yibo_grace@163.com"
+cat /c/Users/y00384577/.ssh/id_rsa.pub
+git config --global user.name "laoyi"
+git config --global user.email "yibo_grace@163.com"
+
+
+#带用户名与密码进行git clone
+git clone https://yibo_grace%40163.com:laoyi19901013@github.com/HybridF5/jacket.git
+
+#centos安装pip
+yum -y install epel-release
+yum install -y python-pip
+
+2016-10-14
+mysql 修改root用户的密码
+
+/etc/init.d/mysql stop   (service mariadb stop )
+/usr/bin/mysqld_safe --skip-grant-tables
+另外开个SSH连接
+[root@localhost ~]# mysql
+mysql>use mysql
+mysql>update user set password=password("123456") where user="root";
+mysql>flush privileges;
+mysql>exit
+
+2016-10-19
+列出rpm包的内容：
+rpm -qpl *.rpm
+
+解压rpm包的内容：（没有安装，就像解压tgz包一样rpm包）
+rpm2cpio *.rpm | cpio -div
