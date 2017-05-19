@@ -1,0 +1,458 @@
+{% load staticfiles %}
+<html>
+<head>
+    <meta content="text/html" charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
+    <script type="application/javascript" src="{% static 'jquery-1.11.3.min.js' %}"></script>
+    <script type="application/javascript" src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+    <script type="application/javascript" src="{% static 'bootstrap-paginator/build/bootstrap-paginator.min.js' %}"></script>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1></h1>
+
+        <!--job select-->
+        <div class="row">
+            <div class="col-md-5">
+                <select id="jobs_select" class=" form-control"></select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-primary" id="get_builds_result">查询</button>
+            </div>
+            <div class="col-md-offset-11">
+                <a target='_blank' href="latest_package_version">新包号</a>
+            </div>
+        </div>
+
+        <div class="text-center"><h1 id="job_title"></h1></div>
+
+        <!--chart-->
+        <div class="charts">
+
+        </div>
+
+        <!--Pagination header
+        <div class="row">
+                <ul id="pagination_header" ></ul>
+        </div>
+        -->
+        <!--table-->
+        <table id="main_table" class="table table-hover"></table>
+
+        <!--Pagination footer-->
+        <div class="row">
+                <ul id="pagination_footer" ></ul>
+        </div>
+
+
+
+        <!--Modal for failed test cases-->
+        <div>
+            <div class="modal fade" id="modal_failed_cases" role="dialog" aria-labelledby="liulei">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="liulei">失败用例列表</h4>
+                        </div>
+                        <div class="modal-body" id="model_body_failed_cases">
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--Modal for model info-->
+        <div>
+            <div class="modal fade" id="modal_model_info" role="dialog" aria-labelledby="myModalLabel">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h4 class="modal-title" id="myModalLabel">模块用例信息</h4>
+                        </div>
+                        <div class="modal-body" id="build_model_info">
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+</body>
+
+
+
+ <script>
+{#    alert(1)#}
+{#             $("#failed_cases").html("xxxx")#}
+{#             _show_fail_case_modal()#}
+     function show_failed_cases(job_name, build_num){
+         $.get("tempest_test_cases?job_name="+ job_name +"&build_num="+build_num,
+            function(response){
+                $("#model_body_failed_cases").html(response)
+                _show_fail_case_modal()
+            })
+                 .fail(function(response){
+                     alert("Failed")
+                 })
+     }
+
+     function _show_fail_case_modal(){
+        $("#modal_failed_cases").modal({
+            show: true
+        })
+     }
+     function show_model_info(job_name, build_num){
+
+        $.get("tempest_models_info?job_name="+ job_name +"&build_num="+build_num, function(response){
+            model_info = response["model_info"]
+            known_info = model_info["known"]
+            unknown_testcases = model_info["unkwon"]
+
+            str = '<table id="main_table" class="table table-hover">'
+            str = str + '<tr class="info">' +
+                    '<td>模块</td>' +
+                    '<td>用例数</td>' +
+                    '<td>成功数</td>' +
+                    '<td>失败数</td>' +
+                    '<td>跳过数</td>' +
+                    '</tr>'
+            for(var p in known_info){
+                count = known_info[p]["count"]
+                success_count = known_info[p]["success"]
+                fail_count = known_info[p]["fail"]
+                skip_count = known_info[p]["skip"]
+
+                str = str +"<tr>"
+                str = str +
+                        "<td>"+ p + "</td>" +
+                        "<td>"+ count +"</td>" +
+                        "<td>"+ success_count +"</td>" +
+                        "<td>"+ fail_count +"</td>" +
+                        "<td>"+ skip_count +"</td>"
+                str = str +"</tr>"
+            }
+            str = str + '</table>'
+            $("#build_model_info").html(str)
+            _show_modal()
+
+        })
+
+     }
+     function _show_modal(){
+        $("#modal_model_info").modal({
+            show: true
+        })
+     }
+    </script>
+
+<script type="application/javascript">
+
+    url = "jobs"
+    jobs = []
+    $.get(url, function(response){
+        jobs = response["jobs"]
+        dropdown_str = ""
+        option_str = ""
+        for(i=0; i<jobs.length; i++){
+            if(jobs[i]["job_name"].match("^physical_smoke_tempest_run")){
+                //default job_name to show
+                option_str = "<option class='option_select'>" +
+                        jobs[i]["job_name"] + "@"
+                        + jobs[i]["description"] + "</option>" + option_str
+            }
+            else{
+                option_str = option_str + "<option class='option_select'>"
+                        + jobs[i]["job_name"] + "@"
+                        + jobs[i]["description"] + "</option>"
+            }
+        }
+        $("#jobs_select").html(option_str)
+    })
+
+
+    var options = {}
+    var job_name = "physical_smoke_tempest_run"
+
+    get_builds(job_name)
+
+    $("#get_builds_result").on("click", function(){
+        job = $("#jobs_select").val()
+        job_name = job.split("@")[0]
+        options["currentPage"] = 1
+        get_builds(job_name)
+        job_name = job_name
+
+    })
+
+    function set_pagination(total_count, count_per_page, current_page){
+        page_count = Math.ceil(total_count / count_per_page)
+        total_pages = page_count
+        visible_pages = 0
+        if(page_count >= 5){
+            visible_pages = 5
+        }
+        else{
+            visible_pages = page_count
+        }
+
+        options = {
+            //currentPage: 1,
+            numberOfPages:visible_pages,
+            totalPages: total_pages,
+            bootstrapMajorVersion: 3,
+            alignment: "right",
+            size:"small",
+            useBootstrapTooltip:true,
+            onPageClicked: function(e,originalEvent,type,page){
+                url = "builds?job_name="+job_name + "&limit=0"+ "&page="+page
+                _get_builds(url)
+                change_page(page)
+
+            }
+        }
+        _set_pagenation(options)
+
+    }
+
+    function _set_pagenation(options){
+        //$('#pagination_header').bootstrapPaginator(options);
+        $('#pagination_footer').bootstrapPaginator(options);
+    }
+
+    function change_page(page){
+        options["currentPage"] = page
+        _set_pagenation(options)
+    }
+
+    function get_builds(job_name){
+        limit = 0
+        $("#job_title").html(job_name)
+        url = "builds?job_name=" + job_name + "&limit=" + limit
+        _get_builds(url)
+    }
+
+    function _get_builds(url){
+        $.get(url, function(response){
+            builds = response["builds"]
+
+            count_per_page = response["limit"]
+            total_count = response["total_count"]
+            set_pagination(total_count, count_per_page)
+
+
+            if(job_name.match("pep8_run")){
+                pep8_run_builds(builds)
+            }
+            if(job_name.match("ut_run")){
+                ut_run_builds(builds)
+            }
+            if(job_name.match("tempest")){
+                tempest_run_builds(builds)
+            }
+        })
+    }
+
+    function _define_level(build){
+        str = ""
+        if(build["result"]=="PASSED"){
+                str = "<tr class='success result_success'>"
+            }
+            else if(build["result"]=="NotRun"){
+                str = "<tr class='active'>"
+            }
+            else{
+                str = "<tr class='danger' id='result_fail'>"
+            }
+        return str
+    }
+
+    function tempest_run_builds(builds){
+        $("#main_table").text("")
+        header = //"<td>构建时间</td>" +
+                "<td>构建</td>" +
+                "<td>Version</td>" +
+                "<td>包号</td>" +
+                "<td>耗时</td>" +
+                "<td>结果</td>" +
+                "<td>原因</td>" +
+                "<td>成功</td>" +
+                "<td>跳过数</td>" +
+                "<td>失败</td>" +
+                "<td>用例数</td>" +
+                "<td>超时20s</td>" +
+                "<td>详细</td>" +
+                "<td>链接</td>"
+        str = '<tr id="table_header" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+
+        str = ""
+
+        for(i=0; i<builds.length; i++){
+            build = builds[i]
+            success_percent = build["success_percent"] + build["skip_percent"]
+            success_percent = success_percent.toFixed(2)
+            duration = build["duration"] / 1000
+            duration_sec = parseInt(duration % 60)
+            duration_min = parseInt(duration / 60)
+            //sf_version =
+
+            str = _define_level(build)
+            //str = str + "<td>" + build["build_time"] + "</td>"
+            str = str + "<td>" + build["build_num"] + "</td>"
+            str = str + "<td>" + build["sf_version"] + "</td>"
+            str = str + "<td>" + build["package_version"] + "</td>"
+            str = str + "<td>" + duration_min+"m"+duration_sec + "s</td>"
+            str = str + "<td>" + build["result"] + "</td>"
+            str = str + "<td>" + build["not_run_reason"] + "</td>"
+            str = str + "<td>" + success_percent + "%</td>"
+            str = str + "<td>" + build["skip_count"] + "</td>"
+            str = str + "<td>" +
+                    "<button type='button'  id='failed_cases' onclick='show_failed_cases(\""
+                    + job_name +"\","+ build["build_num"] +")' class='btn btn-link'>" +
+                    build["fail_percent"] + "%</td>"
+            str = str + "<td>" + build["total_count"] + "</td>"
+            str = str + "<td>" + build["timeout_count"] + "</td>"
+            str = str + "<td>" +
+                    "<button type='button' id='models_info'  onclick='show_model_info(\""
+                    + job_name +"\","+ build["build_num"] +")' class='btn btn-link'>" +
+                    "<span class='glyphicon glyphicon-th' aria-hidden='true'></span>" +
+                    "</button>" + "</td>"
+            str = str + "<td>" + "<a target='_blank' href='" + build["jenkins_url"] + "'>" +
+                    "<span class='glyphicon glyphicon-link' aria-hidden='true'></span></a>" + "</td>"
+            str = str + "</tr>"
+            $("#main_table").append(str)
+        }
+        str = '<tr id="table_footer" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+    }
+
+    function pep8_run_builds(){
+        $("#main_table").text("")
+        header = //"<td>构建时间</td>" +
+                "<td>构建</td>" +
+                "<td>耗时</td>" +
+                "<td>结果</td>" +
+                "<td>原因</td>" +
+                "<td>违反规范数</td>" +
+                "<td>详细</td>" +
+                "<td>链接</td>"
+        str = '<tr id="table_header" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+
+        str = ""
+        for(i=0; i<builds.length; i++){
+            build = builds[i]
+            success_percent = build["success_percent"] + build["skip_percent"]
+            success_percent = success_percent.toFixed(2)
+            duration = build["duration"] / 1000
+            duration_sec = parseInt(duration % 60)
+            duration_min = parseInt(duration / 60)
+            str = _define_level(build)
+            //str = str + "<td>" + build["build_time"] + "</td>"
+            str = str + "<td>" + build["build_num"] + "</td>"
+            str = str + "<td>" + duration_min+"m"+duration_sec + "s</td>"
+            str = str + "<td>" + build["result"] + "</td>"
+            str = str + "<td>" + build["not_run_reason"] + "</td>"
+            str = str + "<td>" + build["check_failed_count"] + "</td>"
+            str = str + "<td>" +
+                    "<button type='button' id='models_info'  onclick='show_model_info(\""
+                    + job_name +"\","+ build["build_num"] +")' class='btn btn-link'>" +
+                    "<span class='glyphicon glyphicon-th' aria-hidden='true'></span>" +
+                    "</button>" + "</td>"
+            str = str + "<td>" + "<a target='_blank' href='" + build["jenkins_url"] + "'>" +
+                    "<span class='glyphicon glyphicon-link' aria-hidden='true'></span></a>" + "</td>"
+            str = str + "</tr>"
+            $("#main_table").append(str)
+        }
+
+        str = '<tr id="table_footer" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+    }
+
+    function ut_run_builds(){
+        $("#main_table").text("")
+        header = //"<td>构建时间</td>" +
+                "<td>构建</td>" +
+                "<td>耗时</td>" +
+                "<td>结果</td>" +
+                "<td>原因</td>" +
+                "<td>成功</td>" +
+                "<td>跳过数</td>" +
+                "<td>失败</td>" +
+                "<td>用例数</td>" +
+                "<td>超时>20s</td>" +
+                "<td>详细</td>" +
+                "<td>链接</td>"
+        str = '<tr id="table_header" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+
+        str = ""
+        for(i=0; i<builds.length; i++){
+            build = builds[i]
+            success_percent = build["success_percent"] + build["skip_percent"]
+            success_percent = success_percent.toFixed(2)
+            duration = build["duration"] / 1000
+            duration_sec = parseInt(duration % 60)
+            duration_min = parseInt(duration / 60)
+            str = _define_level(build)
+            //str = str + "<td>" + build["build_time"] + "</td>"
+            str = str + "<td>" + build["build_num"] + "</td>"
+            str = str + "<td>" + duration_min+"m"+duration_sec + "s</td>"
+            str = str + "<td>" + build["result"] + "</td>"
+            str = str + "<td>" + build["not_run_reason"] + "</td>"
+            str = str + "<td>" + success_percent + "%</td>"
+            str = str + "<td>" + build["skip_count"] + "</td>"
+            str = str + "<td>" + build["fail_percent"] + "%</td>"
+            str = str + "<td>" + build["total_count"] + "</td>"
+            str = str + "<td>" + build["maxtime"] + "</td>"
+            str = str + "<td>" +
+                    "<button type='button' id='models_info'  onclick='show_model_info(\""
+                    + job_name +"\","+ build["build_num"] +")' class='btn btn-link'>" +
+                    "<span class='glyphicon glyphicon-th' aria-hidden='true'></span>" +
+                    "</button>" + "</td>"
+            str = str + "<td>" + "<a target='_blank' href='" + build["jenkins_url"] + "'>" +
+                    "<span class='glyphicon glyphicon-link' aria-hidden='true'></span></a>" + "</td>"
+            str = str + "</tr>"
+            $("#main_table").append(str)
+        }
+        str = '<tr id="table_footer" class="info">'
+        str = str + header
+        str = str + '</tr>'
+        $("#main_table").append(str)
+    }
+
+
+
+</script>
+
+</html>

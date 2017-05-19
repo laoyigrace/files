@@ -1,0 +1,159 @@
+[33mcommit eac339a07228487ad9c85cd4f36e858b568a11d9[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Dec 7 12:21:01 2015 +0800
+
+    delete pdb
+
+[33mcommit 593cc70131b42654994ea9edad6d9f42e8761823[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Dec 7 12:15:24 2015 +0800
+
+    add ‘change hosts’ in server
+
+[33mcommit 2d60fcc8a5adab4b8e2324bc75d7751f65953ac1[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Dec 7 12:13:54 2015 +0800
+
+    fixed defaule password
+
+[33mcommit 40cdf09a811c37d19dd0b187d22a4b12ab0f5f2f[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Dec 7 10:44:38 2015 +0800
+
+    delete sudo
+
+[33mcommit e0425678e25b0bd57731cc1eb9a3ded589320166[m
+Author: 33410 <33410@sangfor.com>
+Date:   Sat Dec 5 11:37:04 2015 +0800
+
+    add function: set/unset hosts in localhost
+
+[33mcommit 847e6bb73716a7448f46148399936117247248f1[m
+Author: 33410 <33410@sangfor.com>
+Date:   Sat Nov 21 17:41:31 2015 +0800
+
+    change ip to dns
+
+[33mcommit 0c00177b71354f47e81347f55da0b1a767921c2a[m
+Merge: ac70cd9 36ca2a1
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Oct 21 10:40:48 2015 +0800
+
+    Merge branch 'debug' of /data2/git_data/repositories/cpt/tui into develop
+
+[33mcommit 36ca2a10fdbdac3a37c3d7e1c478468059c52db6[m
+Author: 33410 <33410@sangfor.com>
+Date:   Tue Oct 20 20:55:38 2015 +0800
+
+    hide the sf_common_info
+
+[33mcommit ac70cd93b6db57e44a9f329c4c49821e55aba4ee[m
+Merge: f5e08e6 407ed52
+Author: 33410 <33410@sangfor.com>
+Date:   Tue Oct 20 16:08:47 2015 +0800
+
+    Merge branch 'debug' of /data2/git_data/repositories/cpt/tui into develop
+
+[33mcommit 407ed523d1af58c2c14b66ed3934016cff792813[m
+Author: 33410 <33410@sangfor.com>
+Date:   Tue Oct 20 16:06:37 2015 +0800
+
+    fixed sample file:delete oslo.log
+
+[33mcommit a4c546e68f8f9481195d3ae02c2bbbed0e186fcb[m
+Author: 33410 <33410@sangfor.com>
+Date:   Tue Oct 20 09:47:06 2015 +0800
+
+    pep8
+
+[33mcommit f5e08e6620d330f9148b2aca16d1740a39054869[m
+Merge: afd151e a8b2123
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 20:43:03 2015 +0800
+
+    Merge branch 'debug' of /data2/git_data/repositories/cpt/tui into develop
+
+[33mcommit a8b212395f6512d0aff31060101408a5708f6087[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 20:09:09 2015 +0800
+
+    delete csrf check
+
+[33mcommit 0003a64b82656b0d6678f4bc87fb1f86aed10314[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 20:08:40 2015 +0800
+
+    delete pdb
+
+[33mcommit abb19156169894cb7ce1936b70f2396732a706bd[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 19:49:42 2015 +0800
+
+    fixed to get response with httplib2
+
+[33mcommit afd151e5a04615f4c5d29da685fa8f1556d6da12[m
+Merge: 5e21af8 e3e4903
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 10:24:31 2015 +0800
+
+    Merge branch 'debug' of /data2/git_data/repositories/cpt/tui into develop
+
+[33mcommit e3e4903403d03cb3f394a051caafbfab1e1f372e[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 10:22:26 2015 +0800
+
+    fixed bug: the value is list value
+
+[33mcommit de053879cd3180ce8deaf8fab024513b890d69a8[m
+Author: 33410 <33410@sangfor.com>
+Date:   Mon Oct 12 10:21:15 2015 +0800
+
+    add openstack info
+
+[33mcommit 5e21af830d915322089e51cf5592cf95c49a6b59[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 16:39:08 2015 +0800
+
+    dont delete tmp file
+
+[33mcommit 55a16db991dd2e6e2d9631af39faa4e24ea7952f[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 16:36:33 2015 +0800
+
+    change the time to delete the tmp file
+
+[33mcommit 972c69459a6c1542831b5cb30f1f81899d107d53[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 16:25:57 2015 +0800
+
+    change the dir to dynamick
+
+[33mcommit e3d3be26b19045872420a69baa6a6ef19537c0bb[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 15:39:28 2015 +0800
+
+    add port for mq
+
+[33mcommit 5610e2ec9623c58375b89537d858ff089151ae75[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 10:57:14 2015 +0800
+
+    add .gitignore
+
+[33mcommit e46cb54d2588fa16db792f1ef35487d8009ba73b[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 10:56:52 2015 +0800
+
+    delete unused files
+
+[33mcommit ad1c2d1f3e4f83b3547e1a355cca0aa460db4529[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 10:55:10 2015 +0800
+
+    delete unused files
+
+[33mcommit 27c43687bc887e577d64103d1d2bfbd9ac43146d[m
+Author: 33410 <33410@sangfor.com>
+Date:   Wed Sep 30 10:54:05 2015 +0800
+
+    The first commit, can be used with tac

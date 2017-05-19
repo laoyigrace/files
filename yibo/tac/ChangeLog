@@ -1,0 +1,52 @@
+CHANGES
+=======
+
+* delete pdb
+* add key/value
+* debug
+* debug
+* fixd bug
+* add lock_path
+* change ip to dns
+* use m1.tiny as default falvor
+* change some default values
+* changelog
+* add sf_common_info
+* Issue #3
+* pep8; delete unused codes
+* pep8
+* set glance to True as default
+* set ceilometer service is enabled as default
+* fixed a key
+* pep8
+* add Cha
+* the basic function is ok with bug fixed
+* modify the structure of the openstack info
+* info files
+* pep8
+* fixed bug: value should be str
+* add the initiation of self.runtime
+* move the class ahead
+* add retrieve classes for generate
+* change some names
+* add the content that should be set in tempest.conf
+* fixed bug: get_values_for_ui is not useable
+* delete unused files
+* add dependences to requirements.txt
+* add port for rabbitmq
+* add requirementes.txt
+* fix .gitignore
+* pep8
+* add version info
+* can be used with webui
+* delete unused file
+* add ignore
+* add something for generator
+* add a simple tempest config file which is auto generated
+* add README
+* add interface for ui
+* delete unused files
+* u
+* the value can be retrieved from openstack env, but openstack env is not ok yet
+* to debug
+* first add
