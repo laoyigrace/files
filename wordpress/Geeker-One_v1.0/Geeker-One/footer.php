@@ -5,8 +5,8 @@
 
 
   <div class="footer_content"> &copy;2015-<?php echo date('Y'); ?>&nbsp;<a href="<?php bloginfo('url'); ?>">
-    <?php bloginfo('name'); ?> 
-    </a>
+    <?php bloginfo('name'); ?>
+    </a>&nbsp;Email: yb_ojj@163.com(字母小写)
   </div>
 
 
