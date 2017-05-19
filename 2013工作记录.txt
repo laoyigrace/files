@@ -1484,7 +1484,8 @@ cd /root/dockerdir/tui
 git pull
 
 #启动tac容器
-docker run -d --name tui-tac -v /root/dockerdir/tui/:/var/tui --privileged=true -p 8003:8000 hub.docker.cpt.com:5000/tui-tac
+docker run -d --name t
+ui-tac -v /root/dockerdir/tui/:/var/tui --privileged=true -p 8003:8000 hub.docker.cpt.com:5000/tui-tac
 
 
 libvirt 打包：
@@ -1649,3 +1650,10 @@ rpm -qpl *.rpm
 
 解压rpm包的内容：（没有安装，就像解压tgz包一样rpm包）
 rpm2cpio *.rpm | cpio -div
+
+
+虚拟机启动：
+
+nova boot --block-device id=3f658c91-8c72-4e1c-a476-aa3bfc82b085,source=image,dest=volume,size=1,bootindex=0,shutdown=remove --block-device\ source=blank,dest=volume,size=1,bootindex=1,shutdown=remove --nic net-id=9f7ba0b4-0187-44a7-bf80-633f0150e5db --flavor 1 xxxxx
+
+nova boot --image 3f658c91-8c72-4e1c-a476-aa3bfc82b08 --nic net-id=9f7ba0b4-0187-44a7-bf80-633f0150e5db --flavor 1 xxxxx
