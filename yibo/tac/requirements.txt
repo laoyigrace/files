@@ -1,0 +1,6 @@
+olso.config>=2.0.0
+oslo.log>=1.6.0
+paramiko>=1.15.2
+pika>=0.10.0
+stevedore>=1.6.0
+
